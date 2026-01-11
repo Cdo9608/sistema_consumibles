@@ -551,13 +551,28 @@ def main():
                     um_auto = ''
                     sistema_auto = ''
                 
-                # Producto NO editable
-                st.text_input("Producto *", value=producto_auto, disabled=True, key=f"entrada_producto_{form_key}")
+                # Producto - Campo de solo lectura visible
+                st.markdown("**Producto** *")
+                if producto_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{producto_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                
                 cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key=f"entrada_cantidad_{form_key}")
-                # UM NO editable
-                st.text_input("UM *", value=um_auto, disabled=True, key=f"entrada_um_{form_key}")
-                # Sistema NO editable
-                st.text_input("Sistema", value=sistema_auto, disabled=True, key=f"entrada_sistema_{form_key}")
+                
+                # UM - Campo de solo lectura visible
+                st.markdown("**UM** *")
+                if um_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{um_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                
+                # Sistema - Campo de solo lectura visible
+                st.markdown("**Sistema**")
+                if sistema_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{sistema_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
             
             with col2:
                 almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos", key=f"entrada_almacen_salida_{form_key}")
@@ -656,10 +671,19 @@ def main():
                     cod_sitio_auto = ''
                     departamento_auto = ''
                 
-                # Código Sitio NO editable
-                st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=True, key=f"salida_cod_sitio_{form_key}")
-                # Departamento NO editable
-                st.text_input("Departamento *", value=departamento_auto, disabled=True, key=f"salida_departamento_{form_key}")
+                # Código Sitio - Campo de solo lectura visible
+                st.markdown("**Código Sitio** *")
+                if cod_sitio_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{cod_sitio_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un sitio primero</div>', unsafe_allow_html=True)
+                
+                # Departamento - Campo de solo lectura visible
+                st.markdown("**Departamento** *")
+                if departamento_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{departamento_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un sitio primero</div>', unsafe_allow_html=True)
                 
                 # Selector de Código Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
@@ -676,15 +700,30 @@ def main():
                     sistema_salida_auto = ''
             
             with col2:
-                # Producto NO editable
-                st.text_input("Producto *", value=producto_salida_auto, disabled=True, key=f"salida_producto_{form_key}")
+                # Producto - Campo de solo lectura visible
+                st.markdown("**Producto** *")
+                if producto_salida_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{producto_salida_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                
                 code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key=f"salida_code_indra_{form_key}")
                 descripcion = st.text_input("Descripción", key=f"salida_descripcion_{form_key}")
                 cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key=f"salida_cantidad_{form_key}")
-                # UM NO editable
-                st.text_input("UM *", value=um_salida_auto, disabled=True, key=f"salida_um_{form_key}")
-                # Sistema NO editable
-                st.text_input("Sistema", value=sistema_salida_auto, disabled=True, key=f"salida_sistema_{form_key}")
+                
+                # UM - Campo de solo lectura visible
+                st.markdown("**UM** *")
+                if um_salida_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{um_salida_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                
+                # Sistema - Campo de solo lectura visible
+                st.markdown("**Sistema**")
+                if sistema_salida_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{sistema_salida_auto}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
             
             if st.button("✅ Registrar Salida", type="primary"):
                 if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
