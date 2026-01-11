@@ -499,15 +499,19 @@ def main():
         with tab1:
             st.subheader("Registrar Nueva Entrada")
             
+            # Inicializar claves en session_state para limpiar formularios
+            if 'entrada_registrada' not in st.session_state:
+                st.session_state.entrada_registrada = False
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006")
-                fecha_entrada = st.date_input("Fecha *")
+                orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006", key="ent_oc")
+                fecha_entrada = st.date_input("Fecha *", key="ent_fecha")
                 
                 # Selector de Código o Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_seleccionado = st.selectbox("Código *", opciones_productos)
+                codigo_seleccionado = st.selectbox("Código *", opciones_productos, key="ent_codigo")
                 
                 if codigo_seleccionado:
                     datos_prod = obtener_datos_producto(codigo_seleccionado)
@@ -519,20 +523,20 @@ def main():
                     um_auto = ''
                     sistema_auto = ''
                 
-                producto = st.text_input("Producto *", value=producto_auto, disabled=bool(codigo_seleccionado))
-                cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0)
-                um = st.text_input("UM *", value=um_auto, disabled=bool(codigo_seleccionado))
-                sistema = st.text_input("Sistema", value=sistema_auto, disabled=bool(codigo_seleccionado))
+                producto = st.text_input("Producto *", value=producto_auto, disabled=bool(codigo_seleccionado), key="ent_producto")
+                cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="ent_cantidad")
+                um = st.text_input("UM *", value=um_auto, disabled=bool(codigo_seleccionado), key="ent_um")
+                sistema = st.text_input("Sistema", value=sistema_auto, disabled=bool(codigo_seleccionado), key="ent_sistema")
             
             with col2:
-                almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos")
-                fecha_envio = st.date_input("Fecha de Envío")
-                responsable_envio = st.text_input("Responsable de Envío")
-                almacen_recepcion = st.text_input("Almacén de Recepción", placeholder="Ej: Ica")
-                fecha_recepcion = st.date_input("Fecha de Recepción")
-                responsable_recepcion = st.text_input("Responsable de Recepción")
+                almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos", key="ent_alm_sal")
+                fecha_envio = st.date_input("Fecha de Envío", key="ent_fecha_env")
+                responsable_envio = st.text_input("Responsable de Envío", key="ent_resp_env")
+                almacen_recepcion = st.text_input("Almacén de Recepción", placeholder="Ej: Ica", key="ent_alm_rec")
+                fecha_recepcion = st.date_input("Fecha de Recepción", key="ent_fecha_rec")
+                responsable_recepcion = st.text_input("Responsable de Recepción", key="ent_resp_rec")
             
-            if st.button("✅ Registrar Entrada", type="primary"):
+            if st.button("✅ Registrar Entrada", type="primary", key="btn_registrar_entrada"):
                 if not all([orden_compra, codigo_seleccionado, cantidad]):
                     st.error("❌ Por favor completa todos los campos obligatorios (*)")
                 else:
@@ -553,6 +557,7 @@ def main():
                     }
                     if crear_entrada(datos):
                         st.success("✅ Entrada registrada exitosamente")
+                        st.session_state.entrada_registrada = True
                         st.rerun()
         
         with tab2:
@@ -561,7 +566,8 @@ def main():
             if st.session_state.entradas.empty:
                 st.info("No hay entradas registradas aún.")
             else:
-                for idx, entrada in st.session_state.entradas.iterrows():
+                # Usar enumerate para keys únicas
+                for idx, (_, entrada) in enumerate(st.session_state.entradas.iterrows()):
                     with st.expander(f"📦 OC: {entrada['orden_compra']} - {entrada['producto']} - Cantidad: {entrada['cantidad']} {entrada['um']}"):
                         col1, col2, col3 = st.columns(3)
                         
@@ -582,7 +588,7 @@ def main():
                             st.write(f"**Fecha Recepción:** {entrada.get('fecha_recepcion', 'N/A')}")
                             st.write(f"**Responsable Recepción:** {entrada.get('responsable_recepcion', 'N/A')}")
                         
-                        if st.button(f"🗑️ Eliminar", key=f"del_ent_{entrada['id']}"):
+                        if st.button(f"🗑️ Eliminar", key=f"del_ent_{idx}_{entrada['id']}"):
                             eliminar_entrada(entrada['id'])
                             st.success("✅ Entrada eliminada")
                             st.rerun()
@@ -596,16 +602,20 @@ def main():
         with tab1:
             st.subheader("Registrar Nueva Salida")
             
+            # Inicializar claves en session_state para limpiar formularios
+            if 'salida_registrada' not in st.session_state:
+                st.session_state.salida_registrada = False
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                nro_guia = st.text_input("N° Guía de Salida *", placeholder="Ej: A123")
-                nro_tarea = st.text_input("N° Tarea", placeholder="Ej: cm-00312")
-                fecha_salida = st.date_input("Fecha *")
+                nro_guia = st.text_input("N° Guía de Salida *", placeholder="Ej: A123", key="sal_guia")
+                nro_tarea = st.text_input("N° Tarea", placeholder="Ej: cm-00312", key="sal_tarea")
+                fecha_salida = st.date_input("Fecha *", key="sal_fecha")
                 
                 # Selector de Site
                 opciones_sites = [""] + st.session_state.sites_data['Nombre'].tolist() if not st.session_state.sites_data.empty else [""]
-                sitio_seleccionado = st.selectbox("Sitio *", opciones_sites)
+                sitio_seleccionado = st.selectbox("Sitio *", opciones_sites, key="sal_sitio")
                 
                 if sitio_seleccionado:
                     datos_site = obtener_datos_site(sitio_seleccionado)
@@ -615,33 +625,46 @@ def main():
                     cod_sitio_auto = ''
                     departamento_auto = ''
                 
-                cod_sitio = st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=bool(sitio_seleccionado))
-                departamento = st.text_input("Departamento *", value=departamento_auto, disabled=bool(sitio_seleccionado))
+                cod_sitio = st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=bool(sitio_seleccionado), key="sal_cod_sitio")
+                departamento = st.text_input("Departamento *", value=departamento_auto, disabled=bool(sitio_seleccionado), key="sal_depto")
                 
-                # Selector de Código o Producto
-                opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos)
+                # Selector de Código o Producto (ahora también con desplegable de productos)
+                st.write("**Selecciona por Código o Producto:**")
+                opciones_codigos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
+                opciones_productos_nombres = [""] + st.session_state.stock_data['Producto'].tolist() if not st.session_state.stock_data.empty else [""]
                 
-                if codigo_prod_seleccionado:
-                    datos_prod = obtener_datos_producto(codigo_prod_seleccionado)
+                col_cod, col_prod = st.columns(2)
+                with col_cod:
+                    codigo_prod_seleccionado = st.selectbox("Código Producto", opciones_codigos, key="sal_codigo")
+                with col_prod:
+                    producto_nombre_seleccionado = st.selectbox("O busca por Producto", opciones_productos_nombres, key="sal_producto_select")
+                
+                # Priorizar el que se seleccionó último
+                seleccion_final = codigo_prod_seleccionado if codigo_prod_seleccionado else producto_nombre_seleccionado
+                
+                if seleccion_final:
+                    datos_prod = obtener_datos_producto(seleccion_final)
+                    codigo_final = datos_prod.get('codigo', '')
                     producto_salida_auto = datos_prod.get('producto', '')
                     um_salida_auto = datos_prod.get('um', '')
                     sistema_salida_auto = datos_prod.get('sistema', '')
                 else:
+                    codigo_final = ''
                     producto_salida_auto = ''
                     um_salida_auto = ''
                     sistema_salida_auto = ''
             
             with col2:
-                producto_salida = st.text_input("Producto *", value=producto_salida_auto, disabled=bool(codigo_prod_seleccionado))
-                code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1")
-                descripcion = st.text_input("Descripción")
-                cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0)
-                um_salida = st.text_input("UM *", value=um_salida_auto, disabled=bool(codigo_prod_seleccionado))
-                sistema_salida = st.text_input("Sistema", value=sistema_salida_auto, disabled=bool(codigo_prod_seleccionado))
+                st.text_input("Código (autocompletado)", value=codigo_final, disabled=True, key="sal_codigo_display")
+                producto_salida = st.text_input("Producto (autocompletado)", value=producto_salida_auto, disabled=True, key="sal_producto_display")
+                code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key="sal_code_indra")
+                descripcion = st.text_input("Descripción", key="sal_descripcion")
+                cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="sal_cantidad")
+                um_salida = st.text_input("UM *", value=um_salida_auto, disabled=True, key="sal_um")
+                sistema_salida = st.text_input("Sistema", value=sistema_salida_auto, disabled=True, key="sal_sistema")
             
-            if st.button("✅ Registrar Salida", type="primary"):
-                if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
+            if st.button("✅ Registrar Salida", type="primary", key="btn_registrar_salida"):
+                if not all([nro_guia, sitio_seleccionado, seleccion_final, cantidad_salida]):
                     st.error("❌ Por favor completa todos los campos obligatorios (*)")
                 else:
                     datos = {
@@ -651,7 +674,7 @@ def main():
                         'cod_sitio': cod_sitio_auto,
                         'sitio': sitio_seleccionado,
                         'departamento': departamento_auto,
-                        'codigo': codigo_prod_seleccionado,
+                        'codigo': codigo_final,
                         'producto': producto_salida_auto,
                         'code_indra': code_indra,
                         'descripcion': descripcion,
@@ -661,6 +684,7 @@ def main():
                     }
                     if crear_salida(datos):
                         st.success("✅ Salida registrada exitosamente")
+                        st.session_state.salida_registrada = True
                         st.rerun()
         
         with tab2:
@@ -669,7 +693,8 @@ def main():
             if st.session_state.salidas.empty:
                 st.info("No hay salidas registradas aún.")
             else:
-                for idx, salida in st.session_state.salidas.iterrows():
+                # Usar enumerate para keys únicas
+                for idx, (_, salida) in enumerate(st.session_state.salidas.iterrows()):
                     with st.expander(f"📤 Guía: {salida['nro_guia']} - {salida['producto']} - Sitio: {salida['sitio']} - Cantidad: {salida['cantidad']} {salida['um']}"):
                         col1, col2, col3 = st.columns(3)
                         
@@ -692,7 +717,7 @@ def main():
                             st.write(f"**UM:** {salida.get('um', 'N/A')}")
                             st.write(f"**Sistema:** {salida.get('sistema', 'N/A')}")
                         
-                        if st.button(f"🗑️ Eliminar", key=f"del_sal_{salida['id']}"):
+                        if st.button(f"🗑️ Eliminar", key=f"del_sal_{idx}_{salida['id']}"):
                             eliminar_salida(salida['id'])
                             st.success("✅ Salida eliminada")
                             st.rerun()
