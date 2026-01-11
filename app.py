@@ -628,43 +628,30 @@ def main():
                 cod_sitio = st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=bool(sitio_seleccionado), key="sal_cod_sitio")
                 departamento = st.text_input("Departamento *", value=departamento_auto, disabled=bool(sitio_seleccionado), key="sal_depto")
                 
-                # Selector de Código o Producto (ahora también con desplegable de productos)
-                st.write("**Selecciona por Código o Producto:**")
-                opciones_codigos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                opciones_productos_nombres = [""] + st.session_state.stock_data['Producto'].tolist() if not st.session_state.stock_data.empty else [""]
+                # Selector de Código de Producto
+                opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
+                codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos, key="sal_codigo")
                 
-                col_cod, col_prod = st.columns(2)
-                with col_cod:
-                    codigo_prod_seleccionado = st.selectbox("Código Producto", opciones_codigos, key="sal_codigo")
-                with col_prod:
-                    producto_nombre_seleccionado = st.selectbox("O busca por Producto", opciones_productos_nombres, key="sal_producto_select")
-                
-                # Priorizar el que se seleccionó último
-                seleccion_final = codigo_prod_seleccionado if codigo_prod_seleccionado else producto_nombre_seleccionado
-                
-                if seleccion_final:
-                    datos_prod = obtener_datos_producto(seleccion_final)
-                    codigo_final = datos_prod.get('codigo', '')
+                if codigo_prod_seleccionado:
+                    datos_prod = obtener_datos_producto(codigo_prod_seleccionado)
                     producto_salida_auto = datos_prod.get('producto', '')
                     um_salida_auto = datos_prod.get('um', '')
                     sistema_salida_auto = datos_prod.get('sistema', '')
                 else:
-                    codigo_final = ''
                     producto_salida_auto = ''
                     um_salida_auto = ''
                     sistema_salida_auto = ''
             
             with col2:
-                st.text_input("Código (autocompletado)", value=codigo_final, disabled=True, key="sal_codigo_display")
-                producto_salida = st.text_input("Producto (autocompletado)", value=producto_salida_auto, disabled=True, key="sal_producto_display")
+                producto_salida = st.text_input("Producto *", value=producto_salida_auto, disabled=bool(codigo_prod_seleccionado), key="sal_producto")
                 code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key="sal_code_indra")
                 descripcion = st.text_input("Descripción", key="sal_descripcion")
                 cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="sal_cantidad")
-                um_salida = st.text_input("UM *", value=um_salida_auto, disabled=True, key="sal_um")
-                sistema_salida = st.text_input("Sistema", value=sistema_salida_auto, disabled=True, key="sal_sistema")
+                um_salida = st.text_input("UM *", value=um_salida_auto, disabled=bool(codigo_prod_seleccionado), key="sal_um")
+                sistema_salida = st.text_input("Sistema", value=sistema_salida_auto, disabled=bool(codigo_prod_seleccionado), key="sal_sistema")
             
             if st.button("✅ Registrar Salida", type="primary", key="btn_registrar_salida"):
-                if not all([nro_guia, sitio_seleccionado, seleccion_final, cantidad_salida]):
+                if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
                     st.error("❌ Por favor completa todos los campos obligatorios (*)")
                 else:
                     datos = {
@@ -674,7 +661,7 @@ def main():
                         'cod_sitio': cod_sitio_auto,
                         'sitio': sitio_seleccionado,
                         'departamento': departamento_auto,
-                        'codigo': codigo_final,
+                        'codigo': codigo_prod_seleccionado,
                         'producto': producto_salida_auto,
                         'code_indra': code_indra,
                         'descripcion': descripcion,
