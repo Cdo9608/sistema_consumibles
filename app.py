@@ -179,6 +179,9 @@ def limpiar_formulario_entrada():
     for key in keys_to_delete:
         if key in st.session_state:
             del st.session_state[key]
+    
+    # Forzar rerun para limpiar widgets sin key
+    st.session_state['_entrada_trigger'] = not st.session_state.get('_entrada_trigger', False)
 
 def limpiar_formulario_salida():
     """Limpia todos los campos del formulario de salida"""
@@ -190,6 +193,9 @@ def limpiar_formulario_salida():
     for key in keys_to_delete:
         if key in st.session_state:
             del st.session_state[key]
+    
+    # Forzar rerun para limpiar widgets sin key
+    st.session_state['_salida_trigger'] = not st.session_state.get('_salida_trigger', False)
 
 def crear_entrada(datos):
     """Crea un nuevo registro de entrada"""
@@ -524,13 +530,16 @@ def main():
             
             col1, col2 = st.columns(2)
             
+            # Usar contador para forzar limpieza completa
+            form_key = st.session_state.get('entrada_form_counter', 0)
+            
             with col1:
-                orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006", key="entrada_orden_compra")
-                fecha_entrada = st.date_input("Fecha *", key="entrada_fecha")
+                orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006", key=f"entrada_orden_compra_{form_key}")
+                fecha_entrada = st.date_input("Fecha *", key=f"entrada_fecha_{form_key}")
                 
                 # Selector de Código Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_seleccionado = st.selectbox("Código Producto *", opciones_productos, key="entrada_codigo")
+                codigo_seleccionado = st.selectbox("Código Producto *", opciones_productos, key=f"entrada_codigo_{form_key}")
                 
                 if codigo_seleccionado:
                     datos_prod = obtener_datos_producto(codigo_seleccionado)
@@ -543,20 +552,20 @@ def main():
                     sistema_auto = ''
                 
                 # Producto NO editable
-                st.text_input("Producto *", value=producto_auto, disabled=True)
-                cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="entrada_cantidad")
+                st.text_input("Producto *", value=producto_auto, disabled=True, key=f"entrada_producto_{form_key}")
+                cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key=f"entrada_cantidad_{form_key}")
                 # UM NO editable
-                st.text_input("UM *", value=um_auto, disabled=True)
+                st.text_input("UM *", value=um_auto, disabled=True, key=f"entrada_um_{form_key}")
                 # Sistema NO editable
-                st.text_input("Sistema", value=sistema_auto, disabled=True)
+                st.text_input("Sistema", value=sistema_auto, disabled=True, key=f"entrada_sistema_{form_key}")
             
             with col2:
-                almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos", key="entrada_almacen_salida")
-                fecha_envio = st.date_input("Fecha de Envío", key="entrada_fecha_envio")
-                responsable_envio = st.text_input("Responsable de Envío", key="entrada_responsable_envio")
-                almacen_recepcion = st.text_input("Almacén de Recepción", placeholder="Ej: Ica", key="entrada_almacen_recepcion")
-                fecha_recepcion = st.date_input("Fecha de Recepción", key="entrada_fecha_recepcion")
-                responsable_recepcion = st.text_input("Responsable de Recepción", key="entrada_responsable_recepcion")
+                almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos", key=f"entrada_almacen_salida_{form_key}")
+                fecha_envio = st.date_input("Fecha de Envío", key=f"entrada_fecha_envio_{form_key}")
+                responsable_envio = st.text_input("Responsable de Envío", key=f"entrada_responsable_envio_{form_key}")
+                almacen_recepcion = st.text_input("Almacén de Recepción", placeholder="Ej: Ica", key=f"entrada_almacen_recepcion_{form_key}")
+                fecha_recepcion = st.date_input("Fecha de Recepción", key=f"entrada_fecha_recepcion_{form_key}")
+                responsable_recepcion = st.text_input("Responsable de Recepción", key=f"entrada_responsable_recepcion_{form_key}")
             
             if st.button("✅ Registrar Entrada", type="primary"):
                 if not all([orden_compra, codigo_seleccionado, cantidad]):
@@ -579,7 +588,8 @@ def main():
                     }
                     if crear_entrada(datos):
                         st.success("✅ Entrada registrada exitosamente")
-                        limpiar_formulario_entrada()
+                        # Incrementar contador para limpiar formulario
+                        st.session_state['entrada_form_counter'] = st.session_state.get('entrada_form_counter', 0) + 1
                         st.rerun()
         
         with tab2:
@@ -626,14 +636,17 @@ def main():
             
             col1, col2 = st.columns(2)
             
+            # Usar contador para forzar limpieza completa
+            form_key = st.session_state.get('salida_form_counter', 0)
+            
             with col1:
-                nro_guia = st.text_input("N° Guía de Salida *", placeholder="Ej: A123", key="salida_nro_guia")
-                nro_tarea = st.text_input("N° Tarea", placeholder="Ej: cm-00312", key="salida_nro_tarea")
-                fecha_salida = st.date_input("Fecha *", key="salida_fecha")
+                nro_guia = st.text_input("N° Guía de Salida *", placeholder="Ej: A123", key=f"salida_nro_guia_{form_key}")
+                nro_tarea = st.text_input("N° Tarea", placeholder="Ej: cm-00312", key=f"salida_nro_tarea_{form_key}")
+                fecha_salida = st.date_input("Fecha *", key=f"salida_fecha_{form_key}")
                 
                 # Selector de Site
                 opciones_sites = [""] + st.session_state.sites_data['Nombre'].tolist() if not st.session_state.sites_data.empty else [""]
-                sitio_seleccionado = st.selectbox("Sitio *", opciones_sites, key="salida_sitio")
+                sitio_seleccionado = st.selectbox("Sitio *", opciones_sites, key=f"salida_sitio_{form_key}")
                 
                 if sitio_seleccionado:
                     datos_site = obtener_datos_site(sitio_seleccionado)
@@ -644,13 +657,13 @@ def main():
                     departamento_auto = ''
                 
                 # Código Sitio NO editable
-                st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=True)
+                st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=True, key=f"salida_cod_sitio_{form_key}")
                 # Departamento NO editable
-                st.text_input("Departamento *", value=departamento_auto, disabled=True)
+                st.text_input("Departamento *", value=departamento_auto, disabled=True, key=f"salida_departamento_{form_key}")
                 
                 # Selector de Código Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos, key="salida_codigo")
+                codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos, key=f"salida_codigo_{form_key}")
                 
                 if codigo_prod_seleccionado:
                     datos_prod = obtener_datos_producto(codigo_prod_seleccionado)
@@ -664,14 +677,14 @@ def main():
             
             with col2:
                 # Producto NO editable
-                st.text_input("Producto *", value=producto_salida_auto, disabled=True)
-                code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key="salida_code_indra")
-                descripcion = st.text_input("Descripción", key="salida_descripcion")
-                cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="salida_cantidad")
+                st.text_input("Producto *", value=producto_salida_auto, disabled=True, key=f"salida_producto_{form_key}")
+                code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key=f"salida_code_indra_{form_key}")
+                descripcion = st.text_input("Descripción", key=f"salida_descripcion_{form_key}")
+                cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key=f"salida_cantidad_{form_key}")
                 # UM NO editable
-                st.text_input("UM *", value=um_salida_auto, disabled=True)
+                st.text_input("UM *", value=um_salida_auto, disabled=True, key=f"salida_um_{form_key}")
                 # Sistema NO editable
-                st.text_input("Sistema", value=sistema_salida_auto, disabled=True)
+                st.text_input("Sistema", value=sistema_salida_auto, disabled=True, key=f"salida_sistema_{form_key}")
             
             if st.button("✅ Registrar Salida", type="primary"):
                 if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
@@ -694,7 +707,8 @@ def main():
                     }
                     if crear_salida(datos):
                         st.success("✅ Salida registrada exitosamente")
-                        limpiar_formulario_salida()
+                        # Incrementar contador para limpiar formulario
+                        st.session_state['salida_form_counter'] = st.session_state.get('salida_form_counter', 0) + 1
                         st.rerun()
         
         with tab2:
