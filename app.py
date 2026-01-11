@@ -528,9 +528,9 @@ def main():
                 orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006", key="entrada_orden_compra")
                 fecha_entrada = st.date_input("Fecha *", key="entrada_fecha")
                 
-                # Selector de Código o Producto
+                # Selector de Código Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_seleccionado = st.selectbox("Código *", opciones_productos, key="entrada_codigo")
+                codigo_seleccionado = st.selectbox("Código Producto *", opciones_productos, key="entrada_codigo")
                 
                 if codigo_seleccionado:
                     datos_prod = obtener_datos_producto(codigo_seleccionado)
@@ -542,10 +542,13 @@ def main():
                     um_auto = ''
                     sistema_auto = ''
                 
-                producto = st.text_input("Producto *", value=producto_auto, disabled=bool(codigo_seleccionado))
+                # Producto NO editable
+                st.text_input("Producto *", value=producto_auto, disabled=True)
                 cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="entrada_cantidad")
-                um = st.text_input("UM *", value=um_auto, disabled=bool(codigo_seleccionado))
-                sistema = st.text_input("Sistema", value=sistema_auto, disabled=bool(codigo_seleccionado))
+                # UM NO editable
+                st.text_input("UM *", value=um_auto, disabled=True)
+                # Sistema NO editable
+                st.text_input("Sistema", value=sistema_auto, disabled=True)
             
             with col2:
                 almacen_salida = st.text_input("Almacén de Salida", placeholder="Ej: Chorrillos", key="entrada_almacen_salida")
@@ -606,7 +609,7 @@ def main():
                             st.write(f"**Fecha Recepción:** {entrada.get('fecha_recepcion', 'N/A')}")
                             st.write(f"**Responsable Recepción:** {entrada.get('responsable_recepcion', 'N/A')}")
                         
-                        # CORRECCIÓN: Clave única con idx y fecha para evitar duplicados
+                        # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_ent_{entrada['id']}_{idx}_{entrada.get('fecha', '')}"):
                             eliminar_entrada(entrada['id'])
                             st.success("✅ Entrada eliminada")
@@ -640,10 +643,12 @@ def main():
                     cod_sitio_auto = ''
                     departamento_auto = ''
                 
-                cod_sitio = st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=bool(sitio_seleccionado))
-                departamento = st.text_input("Departamento *", value=departamento_auto, disabled=bool(sitio_seleccionado))
+                # Código Sitio NO editable
+                st.text_input("Código Sitio *", value=cod_sitio_auto, disabled=True)
+                # Departamento NO editable
+                st.text_input("Departamento *", value=departamento_auto, disabled=True)
                 
-                # Selector de Código o Producto
+                # Selector de Código Producto
                 opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
                 codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos, key="salida_codigo")
                 
@@ -658,12 +663,15 @@ def main():
                     sistema_salida_auto = ''
             
             with col2:
-                producto_salida = st.text_input("Producto *", value=producto_salida_auto, disabled=bool(codigo_prod_seleccionado))
+                # Producto NO editable
+                st.text_input("Producto *", value=producto_salida_auto, disabled=True)
                 code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key="salida_code_indra")
                 descripcion = st.text_input("Descripción", key="salida_descripcion")
                 cantidad_salida = st.number_input("Cantidad *", min_value=0.0, step=1.0, key="salida_cantidad")
-                um_salida = st.text_input("UM *", value=um_salida_auto, disabled=bool(codigo_prod_seleccionado))
-                sistema_salida = st.text_input("Sistema", value=sistema_salida_auto, disabled=bool(codigo_prod_seleccionado))
+                # UM NO editable
+                st.text_input("UM *", value=um_salida_auto, disabled=True)
+                # Sistema NO editable
+                st.text_input("Sistema", value=sistema_salida_auto, disabled=True)
             
             if st.button("✅ Registrar Salida", type="primary"):
                 if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
@@ -718,7 +726,7 @@ def main():
                             st.write(f"**UM:** {salida.get('um', 'N/A')}")
                             st.write(f"**Sistema:** {salida.get('sistema', 'N/A')}")
                         
-                        # CORRECCIÓN: Clave única con idx y fecha para evitar duplicados
+                        # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_sal_{salida['id']}_{idx}_{salida.get('fecha', '')}"):
                             eliminar_salida(salida['id'])
                             st.success("✅ Salida eliminada")
