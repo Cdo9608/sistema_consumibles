@@ -614,7 +614,7 @@ def mostrar_dashboard():
 def main():
     # Título principal
     st.title("📦 Sistema de Gestión de Consumibles y Stock")
-    st.caption("🔐 Datos protegidos con SQLite | ✅ Con backup automático")
+    st.caption("")
     
     # Sidebar para navegación
     st.sidebar.title("📋 Navegación")
