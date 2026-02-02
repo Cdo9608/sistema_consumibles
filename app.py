@@ -1,10 +1,272 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import os
+import sqlite3
 from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
+import shutil
+
+# ==================== CONFIGURACIÓN DE BASE DE DATOS SQLite ====================
+DB_FILE = "inventario.db"
+BACKUP_DIR = Path("backups")
+BACKUP_DIR.mkdir(exist_ok=True)
+
+def init_database():
+    """Inicializa la base de datos SQLite con las tablas necesarias"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Tabla de ENTRADAS
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS entradas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            orden_compra TEXT,
+            fecha TEXT,
+            codigo TEXT,
+            producto TEXT,
+            cantidad REAL,
+            um TEXT,
+            sistema TEXT,
+            almacen_salida TEXT,
+            fecha_envio TEXT,
+            responsable_envio TEXT,
+            almacen_recepcion TEXT,
+            fecha_recepcion TEXT,
+            responsable_recepcion TEXT,
+            creado_por TEXT,
+            fecha_creacion TEXT
+        )
+    ''')
+    
+    # Tabla de SALIDAS
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS salidas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nro_guia TEXT,
+            nro_tarea TEXT,
+            fecha TEXT,
+            cod_sitio TEXT,
+            sitio TEXT,
+            departamento TEXT,
+            codigo TEXT,
+            producto TEXT,
+            code_indra TEXT,
+            descripcion TEXT,
+            cantidad REAL,
+            um TEXT,
+            sistema TEXT,
+            creado_por TEXT,
+            fecha_creacion TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def cargar_entradas_db():
+    """Carga entradas desde la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        df = pd.read_sql_query("SELECT * FROM entradas ORDER BY id DESC", conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Error al cargar entradas: {e}")
+        return pd.DataFrame()
+
+def cargar_salidas_db():
+    """Carga salidas desde la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        df = pd.read_sql_query("SELECT * FROM salidas ORDER BY id DESC", conn)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Error al cargar salidas: {e}")
+        return pd.DataFrame()
+
+def guardar_entrada_db(datos):
+    """Guarda una entrada en la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO entradas (
+                orden_compra, fecha, codigo, producto, cantidad, um, sistema,
+                almacen_salida, fecha_envio, responsable_envio,
+                almacen_recepcion, fecha_recepcion, responsable_recepcion,
+                creado_por, fecha_creacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            datos.get('orden_compra', ''),
+            datos.get('fecha', ''),
+            datos.get('codigo', ''),
+            datos.get('producto', ''),
+            datos.get('cantidad', 0),
+            datos.get('um', ''),
+            datos.get('sistema', ''),
+            datos.get('almacen_salida', ''),
+            datos.get('fecha_envio', ''),
+            datos.get('responsable_envio', ''),
+            datos.get('almacen_recepcion', ''),
+            datos.get('fecha_recepcion', ''),
+            datos.get('responsable_recepcion', ''),
+            datos.get('creado_por', 'Usuario'),
+            obtener_hora_peru()
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Backup automático
+        backup_automatico()
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar entrada: {e}")
+        return False
+
+def guardar_salida_db(datos):
+    """Guarda una salida en la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO salidas (
+                nro_guia, nro_tarea, fecha, cod_sitio, sitio, departamento,
+                codigo, producto, code_indra, descripcion, cantidad, um, sistema,
+                creado_por, fecha_creacion
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            datos.get('nro_guia', ''),
+            datos.get('nro_tarea', ''),
+            datos.get('fecha', ''),
+            datos.get('cod_sitio', ''),
+            datos.get('sitio', ''),
+            datos.get('departamento', ''),
+            datos.get('codigo', ''),
+            datos.get('producto', ''),
+            datos.get('code_indra', ''),
+            datos.get('descripcion', ''),
+            datos.get('cantidad', 0),
+            datos.get('um', ''),
+            datos.get('sistema', ''),
+            datos.get('creado_por', 'Usuario'),
+            obtener_hora_peru()
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Backup automático
+        backup_automatico()
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar salida: {e}")
+        return False
+
+def eliminar_entrada_db(entrada_id):
+    """Elimina una entrada de la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM entradas WHERE id = ?", (entrada_id,))
+        conn.commit()
+        conn.close()
+        backup_automatico()
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar entrada: {e}")
+        return False
+
+def eliminar_salida_db(salida_id):
+    """Elimina una salida de la base de datos"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM salidas WHERE id = ?", (salida_id,))
+        conn.commit()
+        conn.close()
+        backup_automatico()
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar salida: {e}")
+        return False
+
+def backup_automatico():
+    """Crea backup automático del archivo de base de datos"""
+    try:
+        # Solo crear backup cada hora para no saturar
+        ultimo_backup = st.session_state.get('ultimo_backup_timestamp', 0)
+        ahora = datetime.now().timestamp()
+        
+        # Si pasó más de 1 hora desde el último backup
+        if ahora - ultimo_backup > 3600:  # 3600 segundos = 1 hora
+            fecha = datetime.now().strftime('%Y%m%d_%H%M')
+            backup_file = BACKUP_DIR / f"inventario_auto_{fecha}.db"
+            shutil.copy2(DB_FILE, backup_file)
+            st.session_state.ultimo_backup_timestamp = ahora
+            
+            # Limpiar backups antiguos (mantener últimos 50)
+            backups = sorted(BACKUP_DIR.glob("inventario_auto_*.db"))
+            if len(backups) > 50:
+                for old_backup in backups[:-50]:
+                    old_backup.unlink()
+    except Exception as e:
+        pass  # Silencioso para no molestar al usuario
+
+def backup_manual():
+    """Crea backup manual"""
+    try:
+        fecha = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_file = BACKUP_DIR / f"inventario_manual_{fecha}.db"
+        shutil.copy2(DB_FILE, backup_file)
+        return backup_file
+    except Exception as e:
+        st.error(f"Error al crear backup: {e}")
+        return None
+
+def exportar_excel_completo():
+    """Exporta entradas y salidas en un solo Excel con 2 hojas"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        entradas = pd.read_sql_query("SELECT * FROM entradas", conn)
+        salidas = pd.read_sql_query("SELECT * FROM salidas", conn)
+        conn.close()
+        
+        EXPORTS_DIR = Path("exports")
+        EXPORTS_DIR.mkdir(exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = EXPORTS_DIR / f"inventario_completo_{timestamp}.xlsx"
+        
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            # Hoja de Entradas
+            columnas_entradas = [
+                'orden_compra', 'fecha', 'codigo', 'producto', 'cantidad', 'um', 
+                'sistema', 'almacen_salida', 'fecha_envio', 'responsable_envio',
+                'almacen_recepcion', 'fecha_recepcion', 'responsable_recepcion'
+            ]
+            df_entradas = entradas[[col for col in columnas_entradas if col in entradas.columns]]
+            df_entradas.to_excel(writer, sheet_name='Entradas', index=False)
+            
+            # Hoja de Salidas
+            columnas_salidas = [
+                'nro_guia', 'nro_tarea', 'fecha', 'cod_sitio', 'sitio', 
+                'departamento', 'codigo', 'producto', 'code_indra', 'descripcion',
+                'cantidad', 'um', 'sistema'
+            ]
+            df_salidas = salidas[[col for col in columnas_salidas if col in salidas.columns]]
+            df_salidas.to_excel(writer, sheet_name='Salidas', index=False)
+        
+        return filename
+    except Exception as e:
+        st.error(f"Error al exportar: {e}")
+        return None
+
+# ==================== FUNCIONES ORIGINALES ====================
 
 def obtener_hora_peru():
     """Obtiene la hora actual de Perú (UTC-5)"""
@@ -19,11 +281,12 @@ st.set_page_config(
     layout="wide"
 )
 
+# Inicializar base de datos
+init_database()
+
 # Rutas de archivos
 DATA_DIR = Path("data")
 EXPORTS_DIR = Path("exports")
-ENTRADAS_FILE = DATA_DIR / "entradas.xlsx"
-SALIDAS_FILE = DATA_DIR / "salidas.xlsx"
 SITES_FILE = DATA_DIR / "SITES.xlsx"
 STOCK_FILE = DATA_DIR / "Stock.xlsx"
 
@@ -31,29 +294,12 @@ STOCK_FILE = DATA_DIR / "Stock.xlsx"
 DATA_DIR.mkdir(exist_ok=True)
 EXPORTS_DIR.mkdir(exist_ok=True)
 
-# Inicializar session state para ENTRADAS
+# Cargar datos desde DB
 if 'entradas' not in st.session_state:
-    if ENTRADAS_FILE.exists():
-        st.session_state.entradas = pd.read_excel(ENTRADAS_FILE)
-    else:
-        st.session_state.entradas = pd.DataFrame(columns=[
-            'id', 'orden_compra', 'fecha', 'codigo', 'producto', 'cantidad', 'um', 
-            'sistema', 'almacen_salida', 'fecha_envio', 'responsable_envio',
-            'almacen_recepcion', 'fecha_recepcion', 'responsable_recepcion',
-            'creado_por', 'fecha_creacion'
-        ])
+    st.session_state.entradas = cargar_entradas_db()
 
-# Inicializar session state para SALIDAS
 if 'salidas' not in st.session_state:
-    if SALIDAS_FILE.exists():
-        st.session_state.salidas = pd.read_excel(SALIDAS_FILE)
-    else:
-        st.session_state.salidas = pd.DataFrame(columns=[
-            'id', 'nro_guia', 'nro_tarea', 'fecha', 'cod_sitio', 'sitio', 
-            'departamento', 'codigo', 'producto', 'code_indra', 'descripcion',
-            'cantidad', 'um', 'sistema',
-            'creado_por', 'fecha_creacion'
-        ])
+    st.session_state.salidas = cargar_salidas_db()
 
 # Cargar datos de SITES
 if 'sites_data' not in st.session_state:
@@ -75,21 +321,12 @@ if 'stock_data' not in st.session_state:
         st.session_state.stock_data = pd.DataFrame()
         st.error("❌ No se encontró el archivo Stock.xlsx en la carpeta data/")
 
-def guardar_entradas():
-    """Guarda las entradas en Excel"""
-    st.session_state.entradas.to_excel(ENTRADAS_FILE, index=False)
-
-def guardar_salidas():
-    """Guarda las salidas en Excel"""
-    st.session_state.salidas.to_excel(SALIDAS_FILE, index=False)
-
 def obtener_datos_producto(codigo_o_producto):
     """Obtiene datos del producto desde Stock.xlsx"""
     if st.session_state.stock_data.empty:
         return {}
     
     try:
-        # Buscar por código o producto
         producto = st.session_state.stock_data[
             (st.session_state.stock_data['Codigo'].astype(str).str.upper() == str(codigo_o_producto).upper()) |
             (st.session_state.stock_data['Producto'].astype(str).str.upper() == str(codigo_o_producto).upper())
@@ -168,96 +405,29 @@ def calcular_stock_actual():
     
     return stock_df
 
-def limpiar_formulario_entrada():
-    """Limpia todos los campos del formulario de entrada"""
-    keys_to_delete = [
-        'entrada_orden_compra', 'entrada_fecha', 'entrada_codigo',
-        'entrada_cantidad', 'entrada_almacen_salida', 'entrada_fecha_envio',
-        'entrada_responsable_envio', 'entrada_almacen_recepcion',
-        'entrada_fecha_recepcion', 'entrada_responsable_recepcion'
-    ]
-    for key in keys_to_delete:
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # Forzar rerun para limpiar widgets sin key
-    st.session_state['_entrada_trigger'] = not st.session_state.get('_entrada_trigger', False)
-
-def limpiar_formulario_salida():
-    """Limpia todos los campos del formulario de salida"""
-    keys_to_delete = [
-        'salida_nro_guia', 'salida_nro_tarea', 'salida_fecha',
-        'salida_sitio', 'salida_codigo', 'salida_code_indra',
-        'salida_descripcion', 'salida_cantidad'
-    ]
-    for key in keys_to_delete:
-        if key in st.session_state:
-            del st.session_state[key]
-    
-    # Forzar rerun para limpiar widgets sin key
-    st.session_state['_salida_trigger'] = not st.session_state.get('_salida_trigger', False)
-
 def crear_entrada(datos):
     """Crea un nuevo registro de entrada"""
-    nuevo_id = len(st.session_state.entradas) + 1
-    datos['id'] = nuevo_id
-    datos['creado_por'] = 'Usuario'
-    datos['fecha_creacion'] = obtener_hora_peru()
-    
-    nuevo_registro = pd.DataFrame([datos])
-    st.session_state.entradas = pd.concat([st.session_state.entradas, nuevo_registro], ignore_index=True)
-    guardar_entradas()
-    return True
+    if guardar_entrada_db(datos):
+        st.session_state.entradas = cargar_entradas_db()
+        return True
+    return False
 
 def crear_salida(datos):
     """Crea un nuevo registro de salida"""
-    nuevo_id = len(st.session_state.salidas) + 1
-    datos['id'] = nuevo_id
-    datos['creado_por'] = 'Usuario'
-    datos['fecha_creacion'] = obtener_hora_peru()
-    
-    nuevo_registro = pd.DataFrame([datos])
-    st.session_state.salidas = pd.concat([st.session_state.salidas, nuevo_registro], ignore_index=True)
-    guardar_salidas()
-    return True
+    if guardar_salida_db(datos):
+        st.session_state.salidas = cargar_salidas_db()
+        return True
+    return False
 
 def eliminar_entrada(entrada_id):
     """Elimina un registro de entrada"""
-    st.session_state.entradas = st.session_state.entradas[st.session_state.entradas['id'] != entrada_id]
-    guardar_entradas()
+    if eliminar_entrada_db(entrada_id):
+        st.session_state.entradas = cargar_entradas_db()
 
 def eliminar_salida(salida_id):
     """Elimina un registro de salida"""
-    st.session_state.salidas = st.session_state.salidas[st.session_state.salidas['id'] != salida_id]
-    guardar_salidas()
-
-def exportar_excel_completo():
-    """Exporta entradas y salidas en un solo Excel con 2 hojas"""
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = EXPORTS_DIR / f"consumibles_stock_{timestamp}.xlsx"
-    
-    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-        # Hoja de Entradas
-        df_entradas = st.session_state.entradas.copy()
-        columnas_entradas = [
-            'orden_compra', 'fecha', 'codigo', 'producto', 'cantidad', 'um', 
-            'sistema', 'almacen_salida', 'fecha_envio', 'responsable_envio',
-            'almacen_recepcion', 'fecha_recepcion', 'responsable_recepcion'
-        ]
-        df_entradas = df_entradas[[col for col in columnas_entradas if col in df_entradas.columns]]
-        df_entradas.to_excel(writer, sheet_name='Entradas', index=False)
-        
-        # Hoja de Salidas
-        df_salidas = st.session_state.salidas.copy()
-        columnas_salidas = [
-            'nro_guia', 'nro_tarea', 'fecha', 'cod_sitio', 'sitio', 
-            'departamento', 'codigo', 'producto', 'code_indra', 'descripcion',
-            'cantidad', 'um', 'sistema'
-        ]
-        df_salidas = df_salidas[[col for col in columnas_salidas if col in df_salidas.columns]]
-        df_salidas.to_excel(writer, sheet_name='Salidas', index=False)
-    
-    return filename
+    if eliminar_salida_db(salida_id):
+        st.session_state.salidas = cargar_salidas_db()
 
 def mostrar_dashboard():
     """Muestra el dashboard con gráficos y análisis"""
@@ -444,6 +614,7 @@ def mostrar_dashboard():
 def main():
     # Título principal
     st.title("📦 Sistema de Gestión de Consumibles y Stock")
+    st.caption("🔐 Datos protegidos con SQLite | ✅ Con backup automático")
     
     # Sidebar para navegación
     st.sidebar.title("📋 Navegación")
@@ -452,23 +623,56 @@ def main():
         ["🏠 Panel Principal", "📊 Dashboard", "📥 Entradas", "📤 Salidas"]
     )
     
-    # Botón de exportación en sidebar
+    # Sistema de Backups en sidebar
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📥 Exportar Datos")
-    if st.sidebar.button("Exportar TODO a Excel", type="primary"):
+    st.sidebar.subheader("💾 Sistema de Backups")
+    
+    # Información de backups
+    total_entradas = len(st.session_state.entradas)
+    total_salidas = len(st.session_state.salidas)
+    st.sidebar.info(f"📊 **Registros actuales:**\n- Entradas: {total_entradas}\n- Salidas: {total_salidas}")
+    
+    col1, col2 = st.sidebar.columns(2)
+    
+    with col1:
+        if st.button("💾 Backup DB", use_container_width=True):
+            backup_file = backup_manual()
+            if backup_file:
+                st.sidebar.success(f"✅ Backup creado:\n{backup_file.name}")
+    
+    with col2:
+        if st.button("📥 Export Excel", use_container_width=True):
+            with st.spinner("Exportando..."):
+                archivo = exportar_excel_completo()
+                if archivo:
+                    with open(archivo, 'rb') as f:
+                        st.sidebar.download_button(
+                            label="⬇️ Descargar",
+                            data=f,
+                            file_name=archivo.name,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    st.sidebar.success(f"✅ Excel generado")
+    
+    # Botón de exportación completa
+    st.sidebar.markdown("---")
+    if st.sidebar.button("📥 Exportar TODO a Excel", type="primary", use_container_width=True):
         try:
             archivo = exportar_excel_completo()
-            with open(archivo, 'rb') as f:
-                st.sidebar.download_button(
-                    label="⬇️ Descargar Excel Completo",
-                    data=f,
-                    file_name=archivo.name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            total_registros = len(st.session_state.entradas) + len(st.session_state.salidas)
-            st.sidebar.success(f"✅ Excel generado con {total_registros} registros")
+            if archivo:
+                with open(archivo, 'rb') as f:
+                    st.sidebar.download_button(
+                        label="⬇️ Descargar Excel Completo",
+                        data=f,
+                        file_name=archivo.name,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                total_registros = total_entradas + total_salidas
+                st.sidebar.success(f"✅ Excel con {total_registros} registros")
         except Exception as e:
-            st.sidebar.error(f"❌ Error al exportar: {str(e)}")
+            st.sidebar.error(f"❌ Error: {str(e)}")
     
     # Panel Principal
     if pagina == "🏠 Panel Principal":
@@ -476,8 +680,8 @@ def main():
         
         # Calcular métricas
         stock_actual_df = calcular_stock_actual()
-        total_entradas = st.session_state.entradas['cantidad'].sum() if not st.session_state.entradas.empty else 0
-        total_salidas = st.session_state.salidas['cantidad'].sum() if not st.session_state.salidas.empty else 0
+        total_entradas_cant = st.session_state.entradas['cantidad'].sum() if not st.session_state.entradas.empty else 0
+        total_salidas_cant = st.session_state.salidas['cantidad'].sum() if not st.session_state.salidas.empty else 0
         stock_total_inicial = stock_actual_df['Stock inicial'].sum() if not stock_actual_df.empty else 0
         stock_total_actual = stock_actual_df['stock_actual'].sum() if not stock_actual_df.empty else 0
         
@@ -486,9 +690,9 @@ def main():
         with col1:
             st.metric("📦 Stock Inicial Total", f"{stock_total_inicial:,.2f}")
         with col2:
-            st.metric("📥 Total Entradas", f"{total_entradas:,.2f}")
+            st.metric("📥 Total Entradas", f"{total_entradas_cant:,.2f}")
         with col3:
-            st.metric("📤 Total Salidas", f"{total_salidas:,.2f}")
+            st.metric("📤 Total Salidas", f"{total_salidas_cant:,.2f}")
         with col4:
             variacion = stock_total_actual - stock_total_inicial
             st.metric("📊 Stock Actual Total", f"{stock_total_actual:,.2f}", 
@@ -502,7 +706,7 @@ def main():
         with col_ent:
             st.subheader("📥 Últimas Entradas")
             if not st.session_state.entradas.empty:
-                ultimas_entradas = st.session_state.entradas.tail(5)[['fecha', 'producto', 'cantidad', 'orden_compra']]
+                ultimas_entradas = st.session_state.entradas.head(5)[['fecha', 'producto', 'cantidad', 'orden_compra']]
                 st.dataframe(ultimas_entradas, use_container_width=True, hide_index=True)
             else:
                 st.info("No hay entradas registradas")
@@ -510,7 +714,7 @@ def main():
         with col_sal:
             st.subheader("📤 Últimas Salidas")
             if not st.session_state.salidas.empty:
-                ultimas_salidas = st.session_state.salidas.tail(5)[['fecha', 'producto', 'cantidad', 'sitio']]
+                ultimas_salidas = st.session_state.salidas.head(5)[['fecha', 'producto', 'cantidad', 'sitio']]
                 st.dataframe(ultimas_salidas, use_container_width=True, hide_index=True)
             else:
                 st.info("No hay salidas registradas")
@@ -602,7 +806,7 @@ def main():
                         'responsable_recepcion': responsable_recepcion
                     }
                     if crear_entrada(datos):
-                        st.success("✅ Entrada registrada exitosamente")
+                        st.success("✅ Entrada registrada exitosamente en la base de datos")
                         # Incrementar contador para limpiar formulario
                         st.session_state['entrada_form_counter'] = st.session_state.get('entrada_form_counter', 0) + 1
                         st.rerun()
@@ -637,7 +841,7 @@ def main():
                         # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_ent_{entrada['id']}_{idx}_{entrada.get('fecha', '')}"):
                             eliminar_entrada(entrada['id'])
-                            st.success("✅ Entrada eliminada")
+                            st.success("✅ Entrada eliminada de la base de datos")
                             st.rerun()
     
     # Página de Salidas
@@ -745,7 +949,7 @@ def main():
                         'sistema': sistema_salida_auto
                     }
                     if crear_salida(datos):
-                        st.success("✅ Salida registrada exitosamente")
+                        st.success("✅ Salida registrada exitosamente en la base de datos")
                         # Incrementar contador para limpiar formulario
                         st.session_state['salida_form_counter'] = st.session_state.get('salida_form_counter', 0) + 1
                         st.rerun()
@@ -782,7 +986,7 @@ def main():
                         # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_sal_{salida['id']}_{idx}_{salida.get('fecha', '')}"):
                             eliminar_salida(salida['id'])
-                            st.success("✅ Salida eliminada")
+                            st.success("✅ Salida eliminada de la base de datos")
                             st.rerun()
 
 if __name__ == "__main__":
