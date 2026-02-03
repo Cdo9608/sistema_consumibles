@@ -6,6 +6,8 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import shutil
+import base64
+import requests
 import json
 import os
 
@@ -67,14 +69,17 @@ def auto_backup_excel():
         return False
 
 def sincronizar_datos():
-    """Sincroniza datos entre SQLite y archivos JSON"""
+    """Sincroniza datos entre SQLite, JSON local y GitHub"""
     try:
+        # Guardar localmente
         entradas = cargar_entradas_db()
         salidas = cargar_salidas_db()
         
         guardar_a_json(entradas, ENTRADAS_PERSIST)
         guardar_a_json(salidas, SALIDAS_PERSIST)
-        auto_backup_excel()
+        
+        # Sincronizar con GitHub
+        sincronizar_github()
         
         return True
     except Exception as e:
@@ -1101,3 +1106,137 @@ def main():
 
 if __name__ == "__main__":
     main()
+# ==================== FUNCIONES DE GITHUB API ====================
+
+def commit_file_to_github(file_path, content, commit_message):
+    """Hace commit de un archivo a GitHub usando la API"""
+    try:
+        # Leer secrets de Streamlit
+        github_token = st.secrets.get("GITHUB_TOKEN")
+        github_repo = st.secrets.get("GITHUB_REPO")
+        github_branch = st.secrets.get("GITHUB_BRANCH", "main")
+        
+        if not github_token or not github_repo:
+            print("⚠️ Token de GitHub no configurado en Secrets")
+            return False
+        
+        # API endpoint
+        api_url = f"https://api.github.com/repos/{github_repo}/contents/{file_path}"
+        
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Obtener SHA actual del archivo (si existe)
+        response = requests.get(api_url, headers=headers)
+        sha = None
+        if response.status_code == 200:
+            sha = response.json().get("sha")
+        
+        # Codificar contenido en base64
+        content_bytes = content.encode('utf-8') if isinstance(content, str) else content
+        content_base64 = base64.b64encode(content_bytes).decode('utf-8')
+        
+        # Datos para el commit
+        data = {
+            "message": commit_message,
+            "content": content_base64,
+            "branch": github_branch
+        }
+        
+        if sha:
+            data["sha"] = sha
+        
+        # Hacer commit
+        response = requests.put(api_url, headers=headers, json=data)
+        
+        if response.status_code in [200, 201]:
+            return True
+        else:
+            print(f"Error en commit: {response.status_code} - {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"Error al hacer commit a GitHub: {e}")
+        return False
+
+def sincronizar_github():
+    """Sincroniza archivos JSON y Excel con GitHub"""
+    try:
+        # Leer entradas y salidas
+        entradas = cargar_entradas_db()
+        salidas = cargar_salidas_db()
+        
+        # Guardar localmente primero
+        guardar_a_json(entradas, ENTRADAS_PERSIST)
+        guardar_a_json(salidas, SALIDAS_PERSIST)
+        
+        # Leer contenido de JSON
+        with open(ENTRADAS_PERSIST, 'r', encoding='utf-8') as f:
+            entradas_json = f.read()
+        
+        with open(SALIDAS_PERSIST, 'r', encoding='utf-8') as f:
+            salidas_json = f.read()
+        
+        # Commit a GitHub
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        commit_file_to_github(
+            "data/entradas_persist.json",
+            entradas_json,
+            f"Auto-sync entradas - {timestamp}"
+        )
+        
+        commit_file_to_github(
+            "data/salidas_persist.json",
+            salidas_json,
+            f"Auto-sync salidas - {timestamp}"
+        )
+        
+        # Crear y subir backup Excel
+        auto_backup_excel_github()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error en sincronización GitHub: {e}")
+        return False
+
+def auto_backup_excel_github():
+    """Crea backup Excel y lo sube a GitHub"""
+    try:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"backup_auto_{timestamp}.xlsx"
+        local_path = DATA_DIR / filename
+        
+        entradas = cargar_entradas_db()
+        salidas = cargar_salidas_db()
+        
+        # Crear Excel localmente
+        with pd.ExcelWriter(local_path, engine='openpyxl') as writer:
+            entradas.to_excel(writer, sheet_name='Entradas', index=False)
+            salidas.to_excel(writer, sheet_name='Salidas', index=False)
+        
+        # Leer archivo Excel como bytes
+        with open(local_path, 'rb') as f:
+            excel_bytes = f.read()
+        
+        # Subir a GitHub
+        commit_file_to_github(
+            f"data/{filename}",
+            excel_bytes,
+            f"Auto-backup Excel - {timestamp}"
+        )
+        
+        # Limpiar backups locales antiguos
+        backups = sorted(DATA_DIR.glob("backup_auto_*.xlsx"))
+        if len(backups) > 5:
+            for old_backup in backups[:-5]:
+                old_backup.unlink()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error en backup Excel: {e}")
+        return False
