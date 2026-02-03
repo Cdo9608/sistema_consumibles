@@ -9,7 +9,7 @@ import shutil
 import os
 import json
 
-# ==================== CONFIGURACIÓN CRÍTICA ====================
+
 st.set_page_config(
     page_title="Sistema de Inventario - VERSIÓN MEJORADA",
     page_icon="📦",
