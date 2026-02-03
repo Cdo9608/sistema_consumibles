@@ -141,11 +141,9 @@ def init_database():
     ''')
     
     conn.commit()
-    conn.close()
     
     # RESTAURACIÓN AUTOMÁTICA desde JSON
     try:
-        cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM entradas")
         count_entradas = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM salidas")
@@ -155,13 +153,17 @@ def init_database():
             df_entradas = cargar_desde_json(ENTRADAS_PERSIST)
             if not df_entradas.empty:
                 df_entradas.to_sql('entradas', conn, if_exists='replace', index=False)
+                print(f"✅ Restauradas {len(df_entradas)} entradas desde JSON")
         
         if count_salidas == 0 and SALIDAS_PERSIST.exists():
             df_salidas = cargar_desde_json(SALIDAS_PERSIST)
             if not df_salidas.empty:
                 df_salidas.to_sql('salidas', conn, if_exists='replace', index=False)
+                print(f"✅ Restauradas {len(df_salidas)} salidas desde JSON")
     except Exception as e:
         print(f"Error en restauración: {e}")
+    finally:
+        conn.close()
 
 def cargar_entradas_db():
     """Carga entradas desde la base de datos"""
@@ -1111,6 +1113,8 @@ if __name__ == "__main__":
 def commit_file_to_github(file_path, content, commit_message):
     """Hace commit de un archivo a GitHub usando la API"""
     try:
+        print(f"🔄 Intentando commit: {file_path}")
+        
         # Leer secrets de Streamlit
         github_token = st.secrets.get("GITHUB_TOKEN")
         github_repo = st.secrets.get("GITHUB_REPO")
@@ -1119,6 +1123,8 @@ def commit_file_to_github(file_path, content, commit_message):
         if not github_token or not github_repo:
             print("⚠️ Token de GitHub no configurado en Secrets")
             return False
+        
+        print(f"✅ Token encontrado, repo: {github_repo}")
         
         # API endpoint
         api_url = f"https://api.github.com/repos/{github_repo}/contents/{file_path}"
@@ -1133,6 +1139,9 @@ def commit_file_to_github(file_path, content, commit_message):
         sha = None
         if response.status_code == 200:
             sha = response.json().get("sha")
+            print(f"📄 Archivo existe, SHA: {sha[:7]}...")
+        else:
+            print(f"📄 Archivo nuevo, será creado")
         
         # Codificar contenido en base64
         content_bytes = content.encode('utf-8') if isinstance(content, str) else content
@@ -1149,16 +1158,19 @@ def commit_file_to_github(file_path, content, commit_message):
             data["sha"] = sha
         
         # Hacer commit
+        print(f"📤 Enviando commit...")
         response = requests.put(api_url, headers=headers, json=data)
         
         if response.status_code in [200, 201]:
+            print(f"✅ Commit exitoso: {file_path}")
             return True
         else:
-            print(f"Error en commit: {response.status_code} - {response.text}")
+            print(f"❌ Error en commit: {response.status_code}")
+            print(f"   Respuesta: {response.text[:200]}")
             return False
             
     except Exception as e:
-        print(f"Error al hacer commit a GitHub: {e}")
+        print(f"❌ Error al hacer commit a GitHub: {e}")
         return False
 
 def sincronizar_github():
