@@ -10,12 +10,12 @@ import json
 import base64
 import requests
 
-# ==================== CONFIGURACIÓN DE BASE DE DATOS SQLite ====================
+
 DB_FILE = "inventario.db"
 BACKUP_DIR = Path("backups")
 BACKUP_DIR.mkdir(exist_ok=True)
 
-# Carpeta para backups automáticos en GitHub
+
 BACKUPS_DIR = Path("backups_sistema")
 BACKUPS_DIR.mkdir(exist_ok=True)
 ENTRADAS_PERSIST = BACKUPS_DIR / "entradas_persist.json"
