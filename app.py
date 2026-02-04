@@ -12,7 +12,7 @@ import json
 import os
 
 # ==================== CONFIGURACIÓN Y PERSISTENCIA ====================
-
+# Configuración de directorios
 DATA_DIR = Path("backups_sistema")
 DATA_DIR.mkdir(exist_ok=True)
 
@@ -163,7 +163,7 @@ def init_database():
     
     conn.commit()
     
-   
+    # RESTAURACIÓN AUTOMÁTICA desde JSON
     try:
         cursor.execute("SELECT COUNT(*) FROM entradas")
         count_entradas = cursor.fetchone()[0]
@@ -400,7 +400,7 @@ def exportar_excel_completo():
         st.error(f"Error al exportar: {e}")
         return None
 
-
+# ==================== FUNCIONES ORIGINALES ====================
 
 def obtener_hora_peru():
     """Obtiene la hora actual de Perú (UTC-5)"""
@@ -1205,13 +1205,41 @@ def commit_file_to_github(file_path, content, commit_message):
 def sincronizar_github():
     """Sincroniza archivos JSON y Excel con GitHub"""
     try:
+        print("📋 Verificando secrets...")
+        
+        # VERIFICAR SECRETS PRIMERO
+        try:
+            github_token = st.secrets.get("GITHUB_TOKEN")
+            github_repo = st.secrets.get("GITHUB_REPO")
+            
+            if not github_token:
+                print("❌ GITHUB_TOKEN no encontrado en secrets")
+                st.error("❌ Token de GitHub no configurado. Ve a Settings → Secrets")
+                return False
+                
+            if not github_repo:
+                print("❌ GITHUB_REPO no encontrado en secrets")
+                st.error("❌ GITHUB_REPO no configurado en Secrets")
+                return False
+                
+            print(f"✅ Secrets encontrados: repo={github_repo}")
+            
+        except Exception as e:
+            print(f"❌ Error al leer secrets: {e}")
+            st.error(f"Error al leer secrets: {e}")
+            return False
+        
         # Leer entradas y salidas
         entradas = cargar_entradas_db()
         salidas = cargar_salidas_db()
         
+        print(f"📊 Datos: {len(entradas)} entradas, {len(salidas)} salidas")
+        
         # Guardar localmente primero
         guardar_a_json(entradas, ENTRADAS_PERSIST)
         guardar_a_json(salidas, SALIDAS_PERSIST)
+        
+        print("✅ JSON guardados localmente")
         
         # Leer contenido de JSON
         with open(ENTRADAS_PERSIST, 'r', encoding='utf-8') as f:
@@ -1220,28 +1248,39 @@ def sincronizar_github():
         with open(SALIDAS_PERSIST, 'r', encoding='utf-8') as f:
             salidas_json = f.read()
         
+        print(f"📄 JSON leídos: {len(entradas_json)} bytes (entradas), {len(salidas_json)} bytes (salidas)")
+        
         # Commit a GitHub
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        commit_file_to_github(
+        print("🚀 Iniciando commits a GitHub...")
+        
+        resultado1 = commit_file_to_github(
             "backups_sistema/entradas_persist.json",
             entradas_json,
             f"Auto-sync entradas - {timestamp}"
         )
         
-        commit_file_to_github(
+        resultado2 = commit_file_to_github(
             "backups_sistema/salidas_persist.json",
             salidas_json,
             f"Auto-sync salidas - {timestamp}"
         )
         
-        # Crear y subir backup Excel
-        auto_backup_excel_github()
-        
-        return True
+        if resultado1 and resultado2:
+            print("✅ Commits exitosos")
+            # Crear y subir backup Excel
+            auto_backup_excel_github()
+            return True
+        else:
+            print("⚠️ Algunos commits fallaron")
+            return False
         
     except Exception as e:
-        print(f"Error en sincronización GitHub: {e}")
+        print(f"❌ ERROR CRÍTICO en sincronizar_github: {e}")
+        import traceback
+        traceback.print_exc()
+        st.error(f"Error crítico: {e}")
         return False
 
 def auto_backup_excel_github():
