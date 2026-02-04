@@ -1,5 +1,23 @@
 [
   {
+    "id": 7,
+    "orden_compra": "OT_002",
+    "fecha": "2026-02-04",
+    "codigo": "AA03",
+    "producto": "Suministro aislamiento témico ductos",
+    "cantidad": 30.0,
+    "um": "m2",
+    "sistema": "Suministros Aire Acondicionado",
+    "almacen_salida": "OR",
+    "fecha_envio": "2026-02-04",
+    "responsable_envio": "CARMEN ORTIZ",
+    "almacen_recepcion": "",
+    "fecha_recepcion": "2026-02-04",
+    "responsable_recepcion": "A",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 09:30 PM"
+  },
+  {
     "id": 6,
     "orden_compra": "TEST_03",
     "fecha": "2026-02-04",
