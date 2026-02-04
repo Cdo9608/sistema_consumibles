@@ -857,26 +857,32 @@ def main():
                 orden_compra = st.text_input("Orden de Compra *", placeholder="Ej: OC-2006", key=f"entrada_orden_compra_{form_key}")
                 fecha_entrada = st.date_input("Fecha *", key=f"entrada_fecha_{form_key}")
                 
-                # Selector de Código Producto
-                opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_seleccionado = st.selectbox("Código Producto *", opciones_productos, key=f"entrada_codigo_{form_key}")
+                # Selector de PRODUCTO (desplegable principal)
+                opciones_productos = [""] + st.session_state.stock_data['Producto'].tolist() if not st.session_state.stock_data.empty else [""]
+                producto_seleccionado = st.selectbox("Producto *", opciones_productos, key=f"entrada_producto_{form_key}")
                 
-                if codigo_seleccionado:
-                    datos_prod = obtener_datos_producto(codigo_seleccionado)
-                    producto_auto = datos_prod.get('producto', '')
-                    um_auto = datos_prod.get('um', '')
-                    sistema_auto = datos_prod.get('sistema', '')
+                if producto_seleccionado:
+                    # Buscar el código correspondiente
+                    fila = st.session_state.stock_data[st.session_state.stock_data['Producto'] == producto_seleccionado]
+                    if not fila.empty:
+                        codigo_auto = fila.iloc[0]['Codigo']
+                        um_auto = fila.iloc[0]['UM']
+                        sistema_auto = fila.iloc[0]['Sistema']
+                    else:
+                        codigo_auto = ''
+                        um_auto = ''
+                        sistema_auto = ''
                 else:
-                    producto_auto = ''
+                    codigo_auto = ''
                     um_auto = ''
                     sistema_auto = ''
                 
-                # Producto - Campo de solo lectura visible
-                st.markdown("**Producto** *")
-                if producto_auto:
-                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{producto_auto}</div>', unsafe_allow_html=True)
+                # Código Producto - Campo de solo lectura visible
+                st.markdown("**Código Producto** *")
+                if codigo_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{codigo_auto}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un producto primero</div>', unsafe_allow_html=True)
                 
                 cantidad = st.number_input("Cantidad *", min_value=0.0, step=1.0, key=f"entrada_cantidad_{form_key}")
                 
@@ -909,8 +915,8 @@ def main():
                     datos = {
                         'orden_compra': orden_compra,
                         'fecha': str(fecha_entrada),
-                        'codigo': codigo_seleccionado,
-                        'producto': producto_auto,
+                        'codigo': codigo_auto,
+                        'producto': producto_seleccionado,
                         'cantidad': cantidad,
                         'um': um_auto,
                         'sistema': sistema_auto,
@@ -1005,27 +1011,33 @@ def main():
                 else:
                     st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un sitio primero</div>', unsafe_allow_html=True)
                 
-                # Selector de Código Producto
-                opciones_productos = [""] + st.session_state.stock_data['Codigo'].tolist() if not st.session_state.stock_data.empty else [""]
-                codigo_prod_seleccionado = st.selectbox("Código Producto *", opciones_productos, key=f"salida_codigo_{form_key}")
+                # Selector de PRODUCTO (desplegable principal)
+                opciones_productos = [""] + st.session_state.stock_data['Producto'].tolist() if not st.session_state.stock_data.empty else [""]
+                producto_salida_seleccionado = st.selectbox("Producto *", opciones_productos, key=f"salida_producto_{form_key}")
                 
-                if codigo_prod_seleccionado:
-                    datos_prod = obtener_datos_producto(codigo_prod_seleccionado)
-                    producto_salida_auto = datos_prod.get('producto', '')
-                    um_salida_auto = datos_prod.get('um', '')
-                    sistema_salida_auto = datos_prod.get('sistema', '')
+                if producto_salida_seleccionado:
+                    # Buscar el código correspondiente
+                    fila = st.session_state.stock_data[st.session_state.stock_data['Producto'] == producto_salida_seleccionado]
+                    if not fila.empty:
+                        codigo_salida_auto = fila.iloc[0]['Codigo']
+                        um_salida_auto = fila.iloc[0]['UM']
+                        sistema_salida_auto = fila.iloc[0]['Sistema']
+                    else:
+                        codigo_salida_auto = ''
+                        um_salida_auto = ''
+                        sistema_salida_auto = ''
                 else:
-                    producto_salida_auto = ''
+                    codigo_salida_auto = ''
                     um_salida_auto = ''
                     sistema_salida_auto = ''
             
             with col2:
-                # Producto - Campo de solo lectura visible
-                st.markdown("**Producto** *")
-                if producto_salida_auto:
-                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{producto_salida_auto}</div>', unsafe_allow_html=True)
+                # Código Producto - Campo de solo lectura visible
+                st.markdown("**Código Producto** *")
+                if codigo_salida_auto:
+                    st.markdown(f'<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #262730;">{codigo_salida_auto}</div>', unsafe_allow_html=True)
                 else:
-                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un producto primero</div>', unsafe_allow_html=True)
                 
                 code_indra = st.text_input("CODE INDRA", placeholder="Ej: a1", key=f"salida_code_indra_{form_key}")
                 descripcion = st.text_input("Descripción", key=f"salida_descripcion_{form_key}")
