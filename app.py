@@ -13,7 +13,7 @@ import os
 
 # ==================== CONFIGURACIÓN Y PERSISTENCIA ====================
 # Configuración de directorios
-DATA_DIR = Path("data")
+DATA_DIR = Path("backups_sistema")
 DATA_DIR.mkdir(exist_ok=True)
 
 # Archivos de persistencia
@@ -71,19 +71,40 @@ def auto_backup_excel():
 def sincronizar_datos():
     """Sincroniza datos entre SQLite, JSON local y GitHub"""
     try:
+        print("=" * 60)
+        print("🔄 INICIANDO SINCRONIZACIÓN")
+        print("=" * 60)
+        
         # Guardar localmente
         entradas = cargar_entradas_db()
         salidas = cargar_salidas_db()
         
+        print(f"📊 Entradas: {len(entradas)} registros")
+        print(f"📊 Salidas: {len(salidas)} registros")
+        
         guardar_a_json(entradas, ENTRADAS_PERSIST)
         guardar_a_json(salidas, SALIDAS_PERSIST)
         
+        print("✅ Archivos JSON guardados localmente")
+        
         # Sincronizar con GitHub
-        sincronizar_github()
+        print("🔄 Intentando sincronizar con GitHub...")
+        resultado = sincronizar_github()
+        
+        if resultado:
+            print("✅ SINCRONIZACIÓN EXITOSA CON GITHUB")
+        else:
+            print("⚠️ SINCRONIZACIÓN CON GITHUB FALLÓ")
+            st.warning("⚠️ Los datos se guardaron localmente pero no se pudieron subir a GitHub. Revisa los logs.")
+        
+        print("=" * 60)
         
         return True
     except Exception as e:
-        print(f"Error en sincronización: {e}")
+        print(f"❌ ERROR EN SINCRONIZACIÓN: {e}")
+        import traceback
+        traceback.print_exc()
+        st.error(f"Error en sincronización: {e}")
         return False
 
 # ==================== CONFIGURACIÓN DE BASE DE DATOS SQLite ====================
@@ -398,7 +419,7 @@ st.set_page_config(
 init_database()
 
 # Rutas de archivos
-DATA_DIR = Path("data")
+DATA_DIR = Path("backups_sistema")
 EXPORTS_DIR = Path("exports")
 SITES_FILE = DATA_DIR / "SITES.xlsx"
 STOCK_FILE = DATA_DIR / "Stock.xlsx"
@@ -920,7 +941,11 @@ def main():
                     }
                     if crear_entrada(datos):
                         st.success("✅ Entrada registrada correctamente")
-                        st.info("🔄 Datos sincronizados automáticamente")
+                        st.info("🔄 Sincronización iniciada - Revisa logs para detalles")
+                        with st.expander("ℹ️ ¿Dónde están mis datos?"):
+                            st.write("📁 Localmente: `backups_sistema/entradas_persist.json`")
+                            st.write("☁️ GitHub: `backups_sistema/` en tu repositorio")
+                            st.write("🔍 Revisa los logs en Streamlit Cloud para ver el estado")
                         # Incrementar contador para limpiar formulario
                         st.session_state['entrada_form_counter'] = st.session_state.get('entrada_form_counter', 0) + 1
                         st.rerun()
@@ -1065,7 +1090,11 @@ def main():
                     }
                     if crear_salida(datos):
                         st.success("✅ Salida registrada correctamente")
-                        st.info("🔄 Datos sincronizados automáticamente")
+                        st.info("🔄 Sincronización iniciada - Revisa logs para detalles")
+                        with st.expander("ℹ️ ¿Dónde están mis datos?"):
+                            st.write("📁 Localmente: `backups_sistema/entradas_persist.json`")
+                            st.write("☁️ GitHub: `backups_sistema/` en tu repositorio")
+                            st.write("🔍 Revisa los logs en Streamlit Cloud para ver el estado")
                         # Incrementar contador para limpiar formulario
                         st.session_state['salida_form_counter'] = st.session_state.get('salida_form_counter', 0) + 1
                         st.rerun()
@@ -1195,13 +1224,13 @@ def sincronizar_github():
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         commit_file_to_github(
-            "data/entradas_persist.json",
+            "backups_sistema/entradas_persist.json",
             entradas_json,
             f"Auto-sync entradas - {timestamp}"
         )
         
         commit_file_to_github(
-            "data/salidas_persist.json",
+            "backups_sistema/salidas_persist.json",
             salidas_json,
             f"Auto-sync salidas - {timestamp}"
         )
@@ -1236,7 +1265,7 @@ def auto_backup_excel_github():
         
         # Subir a GitHub
         commit_file_to_github(
-            f"data/{filename}",
+            f"backups_sistema/{filename}",
             excel_bytes,
             f"Auto-backup Excel - {timestamp}"
         )
