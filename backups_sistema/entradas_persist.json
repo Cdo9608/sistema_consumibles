@@ -90,24 +90,6 @@
     "fecha_creacion": "03/02/2026 09:27 PM"
   },
   {
-    "id": 3,
-    "orden_compra": "Test_01",
-    "fecha": "2026-02-03",
-    "codigo": "AA06",
-    "producto": "Suministro de Oxigeno",
-    "cantidad": 1.0,
-    "um": "m3",
-    "sistema": "Suministros Aire Acondicionado",
-    "almacen_salida": "Luz del Sur",
-    "fecha_envio": "2026-02-03",
-    "responsable_envio": "l",
-    "almacen_recepcion": "Chorrillos",
-    "fecha_recepcion": "2026-02-03",
-    "responsable_recepcion": "Christian",
-    "creado_por": "Usuario",
-    "fecha_creacion": "03/02/2026 04:58 PM"
-  },
-  {
     "id": 2,
     "orden_compra": "Test_01",
     "fecha": "2026-02-03",
