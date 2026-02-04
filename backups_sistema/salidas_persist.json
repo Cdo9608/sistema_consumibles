@@ -1,5 +1,23 @@
 [
   {
+    "id": 3,
+    "nro_guia": "TEST07",
+    "nro_tarea": "CM01",
+    "fecha": "2026-02-04",
+    "cod_sitio": "0133701",
+    "sitio": "0133701_AY_Mayo_Orco",
+    "departamento": "AYACUCHO",
+    "codigo": "GE16",
+    "producto": "Suministro de alternador",
+    "code_indra": "A",
+    "descripcion": "AAA",
+    "cantidad": 20.0,
+    "um": "und",
+    "sistema": "Suministros GE",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 10:34 PM"
+  },
+  {
     "id": 2,
     "nro_guia": "TEST05",
     "nro_tarea": "CM05",
