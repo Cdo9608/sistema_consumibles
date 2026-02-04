@@ -867,7 +867,7 @@ def main():
                     if not fila.empty:
                         codigo_auto = fila.iloc[0]['Codigo']
                         um_auto = fila.iloc[0]['UM']
-                        sistema_auto = fila.iloc[0]['Sistema']
+                        sistema_auto = fila.iloc[0]['SISTEMA']
                     else:
                         codigo_auto = ''
                         um_auto = ''
@@ -1021,7 +1021,7 @@ def main():
                     if not fila.empty:
                         codigo_salida_auto = fila.iloc[0]['Codigo']
                         um_salida_auto = fila.iloc[0]['UM']
-                        sistema_salida_auto = fila.iloc[0]['Sistema']
+                        sistema_salida_auto = fila.iloc[0]['SISTEMA']
                     else:
                         codigo_salida_auto = ''
                         um_salida_auto = ''
