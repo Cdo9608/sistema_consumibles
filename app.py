@@ -12,7 +12,7 @@ import json
 import os
 
 # ==================== CONFIGURACIÓN Y PERSISTENCIA ====================
-
+# Configuración de directorios
 DATA_DIR = Path("backups_sistema")
 DATA_DIR.mkdir(exist_ok=True)
 
