@@ -6,111 +6,20 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import shutil
+import json
 import base64
 import requests
-import json
-import os
-
-# ==================== CONFIGURACIÓN Y PERSISTENCIA ====================
-# Configuración de directorios
-DATA_DIR = Path("backups_sistema")
-DATA_DIR.mkdir(exist_ok=True)
-
-# Archivos de persistencia
-ENTRADAS_PERSIST = DATA_DIR / "entradas_persist.json"
-SALIDAS_PERSIST = DATA_DIR / "salidas_persist.json"
-
-# Funciones de persistencia
-def guardar_a_json(df, archivo):
-    """Guarda DataFrame a JSON para persistencia en GitHub"""
-    try:
-        data = df.to_dict('records')
-        with open(archivo, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error al guardar JSON: {e}")
-        return False
-
-def cargar_desde_json(archivo):
-    """Carga DataFrame desde JSON"""
-    try:
-        if Path(archivo).exists():
-            with open(archivo, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if data:
-                return pd.DataFrame(data)
-    except Exception as e:
-        print(f"Error al cargar JSON: {e}")
-    return pd.DataFrame()
-
-def auto_backup_excel():
-    """Crea backup automático en Excel"""
-    try:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = DATA_DIR / f"backup_auto_{timestamp}.xlsx"
-        
-        entradas = cargar_entradas_db()
-        salidas = cargar_salidas_db()
-        
-        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-            entradas.to_excel(writer, sheet_name='Entradas', index=False)
-            salidas.to_excel(writer, sheet_name='Salidas', index=False)
-        
-        # Mantener solo los últimos 5 backups
-        backups = sorted(DATA_DIR.glob("backup_auto_*.xlsx"))
-        if len(backups) > 5:
-            for old_backup in backups[:-5]:
-                old_backup.unlink()
-        
-        return True
-    except Exception as e:
-        print(f"Error en auto-backup: {e}")
-        return False
-
-def sincronizar_datos():
-    """Sincroniza datos entre SQLite, JSON local y GitHub"""
-    try:
-        print("=" * 60)
-        print("🔄 INICIANDO SINCRONIZACIÓN")
-        print("=" * 60)
-        
-        # Guardar localmente
-        entradas = cargar_entradas_db()
-        salidas = cargar_salidas_db()
-        
-        print(f"📊 Entradas: {len(entradas)} registros")
-        print(f"📊 Salidas: {len(salidas)} registros")
-        
-        guardar_a_json(entradas, ENTRADAS_PERSIST)
-        guardar_a_json(salidas, SALIDAS_PERSIST)
-        
-        print("✅ Archivos JSON guardados localmente")
-        
-        # Sincronizar con GitHub
-        print("🔄 Intentando sincronizar con GitHub...")
-        resultado = sincronizar_github()
-        
-        if resultado:
-            print("✅ SINCRONIZACIÓN EXITOSA CON GITHUB")
-        else:
-            print("⚠️ SINCRONIZACIÓN CON GITHUB FALLÓ")
-            st.warning("⚠️ Los datos se guardaron localmente pero no se pudieron subir a GitHub. Revisa los logs.")
-        
-        print("=" * 60)
-        
-        return True
-    except Exception as e:
-        print(f"❌ ERROR EN SINCRONIZACIÓN: {e}")
-        import traceback
-        traceback.print_exc()
-        st.error(f"Error en sincronización: {e}")
-        return False
 
 # ==================== CONFIGURACIÓN DE BASE DE DATOS SQLite ====================
 DB_FILE = "inventario.db"
 BACKUP_DIR = Path("backups")
 BACKUP_DIR.mkdir(exist_ok=True)
+
+# Carpeta para backups automáticos en GitHub
+BACKUPS_DIR = Path("backups_sistema")
+BACKUPS_DIR.mkdir(exist_ok=True)
+ENTRADAS_PERSIST = BACKUPS_DIR / "entradas_persist.json"
+SALIDAS_PERSIST = BACKUPS_DIR / "salidas_persist.json"
 
 def init_database():
     """Inicializa la base de datos SQLite con las tablas necesarias"""
@@ -162,29 +71,108 @@ def init_database():
     ''')
     
     conn.commit()
-    
-    # RESTAURACIÓN AUTOMÁTICA desde JSON
+    conn.close()
+
+
+# ==================== FUNCIONES DE PERSISTENCIA Y GITHUB API ====================
+
+def guardar_a_json(df, archivo):
+    """Guarda DataFrame a JSON"""
     try:
-        cursor.execute("SELECT COUNT(*) FROM entradas")
-        count_entradas = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM salidas")
-        count_salidas = cursor.fetchone()[0]
-        
-        if count_entradas == 0 and ENTRADAS_PERSIST.exists():
-            df_entradas = cargar_desde_json(ENTRADAS_PERSIST)
-            if not df_entradas.empty:
-                df_entradas.to_sql('entradas', conn, if_exists='replace', index=False)
-                print(f"✅ Restauradas {len(df_entradas)} entradas desde JSON")
-        
-        if count_salidas == 0 and SALIDAS_PERSIST.exists():
-            df_salidas = cargar_desde_json(SALIDAS_PERSIST)
-            if not df_salidas.empty:
-                df_salidas.to_sql('salidas', conn, if_exists='replace', index=False)
-                print(f"✅ Restauradas {len(df_salidas)} salidas desde JSON")
+        data = df.to_dict('records')
+        with open(archivo, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
     except Exception as e:
-        print(f"Error en restauración: {e}")
-    finally:
-        conn.close()
+        print(f"Error al guardar JSON: {e}")
+        return False
+
+def commit_file_to_github(file_path, content, commit_message):
+    """Hace commit de un archivo a GitHub usando la API"""
+    try:
+        print(f"🔄 Commit: {file_path}")
+        
+        github_token = st.secrets.get("GITHUB_TOKEN")
+        github_repo = st.secrets.get("GITHUB_REPO")
+        github_branch = st.secrets.get("GITHUB_BRANCH", "main")
+        
+        if not github_token or not github_repo:
+            print("⚠️ Secrets de GitHub no configurados")
+            return False
+        
+        api_url = f"https://api.github.com/repos/{github_repo}/contents/{file_path}"
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Obtener SHA si existe
+        response = requests.get(api_url, headers=headers)
+        sha = None
+        if response.status_code == 200:
+            sha = response.json().get("sha")
+        
+        # Codificar contenido
+        content_bytes = content.encode('utf-8') if isinstance(content, str) else content
+        content_base64 = base64.b64encode(content_bytes).decode('utf-8')
+        
+        data = {
+            "message": commit_message,
+            "content": content_base64,
+            "branch": github_branch
+        }
+        
+        if sha:
+            data["sha"] = sha
+        
+        response = requests.put(api_url, headers=headers, json=data)
+        
+        if response.status_code in [200, 201]:
+            print(f"✅ Commit exitoso: {file_path}")
+            return True
+        else:
+            print(f"❌ Error {response.status_code}: {response.text[:200]}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error en commit: {e}")
+        return False
+
+def sincronizar_github():
+    """Sincroniza archivos con GitHub"""
+    try:
+        entradas = cargar_entradas_db()
+        salidas = cargar_salidas_db()
+        
+        # Guardar JSON localmente
+        guardar_a_json(entradas, ENTRADAS_PERSIST)
+        guardar_a_json(salidas, SALIDAS_PERSIST)
+        
+        # Leer y subir a GitHub
+        with open(ENTRADAS_PERSIST, 'r', encoding='utf-8') as f:
+            entradas_json = f.read()
+        
+        with open(SALIDAS_PERSIST, 'r', encoding='utf-8') as f:
+            salidas_json = f.read()
+        
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        commit_file_to_github(
+            "backups_sistema/entradas_persist.json",
+            entradas_json,
+            f"Auto-sync entradas - {timestamp}"
+        )
+        
+        commit_file_to_github(
+            "backups_sistema/salidas_persist.json",
+            salidas_json,
+            f"Auto-sync salidas - {timestamp}"
+        )
+        
+        return True
+    except Exception as e:
+        print(f"Error en sincronización: {e}")
+        return False
 
 def cargar_entradas_db():
     """Carga entradas desde la base de datos"""
@@ -244,9 +232,8 @@ def guardar_entrada_db(datos):
         
         # Backup automático
         backup_automatico()
-        
-        # SINCRONIZAR CON GITHUB
-        sincronizar_datos()
+        # Sincronizar con GitHub
+        sincronizar_github()
         return True
     except Exception as e:
         st.error(f"Error al guardar entrada: {e}")
@@ -287,9 +274,8 @@ def guardar_salida_db(datos):
         
         # Backup automático
         backup_automatico()
-        
-        # SINCRONIZAR CON GITHUB
-        sincronizar_datos()
+        # Sincronizar con GitHub
+        sincronizar_github()
         return True
     except Exception as e:
         st.error(f"Error al guardar salida: {e}")
@@ -304,9 +290,7 @@ def eliminar_entrada_db(entrada_id):
         conn.commit()
         conn.close()
         backup_automatico()
-        
-        # SINCRONIZAR CON GITHUB
-        sincronizar_datos()
+        sincronizar_github()
         return True
     except Exception as e:
         st.error(f"Error al eliminar entrada: {e}")
@@ -321,9 +305,7 @@ def eliminar_salida_db(salida_id):
         conn.commit()
         conn.close()
         backup_automatico()
-        
-        # SINCRONIZAR CON GITHUB
-        sincronizar_datos()
+        sincronizar_github()
         return True
     except Exception as e:
         st.error(f"Error al eliminar salida: {e}")
@@ -419,7 +401,7 @@ st.set_page_config(
 init_database()
 
 # Rutas de archivos
-DATA_DIR = Path("backups_sistema")
+DATA_DIR = Path("data")
 EXPORTS_DIR = Path("exports")
 SITES_FILE = DATA_DIR / "SITES.xlsx"
 STOCK_FILE = DATA_DIR / "Stock.xlsx"
@@ -940,12 +922,7 @@ def main():
                         'responsable_recepcion': responsable_recepcion
                     }
                     if crear_entrada(datos):
-                        st.success("✅ Entrada registrada correctamente")
-                        st.info("🔄 Sincronización iniciada - Revisa logs para detalles")
-                        with st.expander("ℹ️ ¿Dónde están mis datos?"):
-                            st.write("📁 Localmente: `backups_sistema/entradas_persist.json`")
-                            st.write("☁️ GitHub: `backups_sistema/` en tu repositorio")
-                            st.write("🔍 Revisa los logs en Streamlit Cloud para ver el estado")
+                        st.success("✅ Entrada registrada exitosamente en la base de datos")
                         # Incrementar contador para limpiar formulario
                         st.session_state['entrada_form_counter'] = st.session_state.get('entrada_form_counter', 0) + 1
                         st.rerun()
@@ -980,8 +957,7 @@ def main():
                         # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_ent_{entrada['id']}_{idx}_{entrada.get('fecha', '')}"):
                             eliminar_entrada(entrada['id'])
-                            st.success("✅ Entrada eliminada")
-                            st.info("🔄 Datos sincronizados")
+                            st.success("✅ Entrada eliminada de la base de datos")
                             st.rerun()
     
     # Página de Salidas
@@ -1089,12 +1065,7 @@ def main():
                         'sistema': sistema_salida_auto
                     }
                     if crear_salida(datos):
-                        st.success("✅ Salida registrada correctamente")
-                        st.info("🔄 Sincronización iniciada - Revisa logs para detalles")
-                        with st.expander("ℹ️ ¿Dónde están mis datos?"):
-                            st.write("📁 Localmente: `backups_sistema/entradas_persist.json`")
-                            st.write("☁️ GitHub: `backups_sistema/` en tu repositorio")
-                            st.write("🔍 Revisa los logs en Streamlit Cloud para ver el estado")
+                        st.success("✅ Salida registrada exitosamente en la base de datos")
                         # Incrementar contador para limpiar formulario
                         st.session_state['salida_form_counter'] = st.session_state.get('salida_form_counter', 0) + 1
                         st.rerun()
@@ -1131,192 +1102,8 @@ def main():
                         # Clave única con idx y fecha para evitar duplicados
                         if st.button(f"🗑️ Eliminar", key=f"del_sal_{salida['id']}_{idx}_{salida.get('fecha', '')}"):
                             eliminar_salida(salida['id'])
-                            st.success("✅ Salida eliminada")
-                            st.info("🔄 Datos sincronizados")
+                            st.success("✅ Salida eliminada de la base de datos")
                             st.rerun()
 
 if __name__ == "__main__":
     main()
-# ==================== FUNCIONES DE GITHUB API ====================
-
-def commit_file_to_github(file_path, content, commit_message):
-    """Hace commit de un archivo a GitHub usando la API"""
-    try:
-        print(f"🔄 Intentando commit: {file_path}")
-        
-        # Leer secrets de Streamlit
-        github_token = st.secrets.get("GITHUB_TOKEN")
-        github_repo = st.secrets.get("GITHUB_REPO")
-        github_branch = st.secrets.get("GITHUB_BRANCH", "main")
-        
-        if not github_token or not github_repo:
-            print("⚠️ Token de GitHub no configurado en Secrets")
-            return False
-        
-        print(f"✅ Token encontrado, repo: {github_repo}")
-        
-        # API endpoint
-        api_url = f"https://api.github.com/repos/{github_repo}/contents/{file_path}"
-        
-        headers = {
-            "Authorization": f"token {github_token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        
-        # Obtener SHA actual del archivo (si existe)
-        response = requests.get(api_url, headers=headers)
-        sha = None
-        if response.status_code == 200:
-            sha = response.json().get("sha")
-            print(f"📄 Archivo existe, SHA: {sha[:7]}...")
-        else:
-            print(f"📄 Archivo nuevo, será creado")
-        
-        # Codificar contenido en base64
-        content_bytes = content.encode('utf-8') if isinstance(content, str) else content
-        content_base64 = base64.b64encode(content_bytes).decode('utf-8')
-        
-        # Datos para el commit
-        data = {
-            "message": commit_message,
-            "content": content_base64,
-            "branch": github_branch
-        }
-        
-        if sha:
-            data["sha"] = sha
-        
-        # Hacer commit
-        print(f"📤 Enviando commit...")
-        response = requests.put(api_url, headers=headers, json=data)
-        
-        if response.status_code in [200, 201]:
-            print(f"✅ Commit exitoso: {file_path}")
-            return True
-        else:
-            print(f"❌ Error en commit: {response.status_code}")
-            print(f"   Respuesta: {response.text[:200]}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error al hacer commit a GitHub: {e}")
-        return False
-
-def sincronizar_github():
-    """Sincroniza archivos JSON y Excel con GitHub"""
-    try:
-        print("📋 Verificando secrets...")
-        
-        # VERIFICAR SECRETS PRIMERO
-        try:
-            github_token = st.secrets.get("GITHUB_TOKEN")
-            github_repo = st.secrets.get("GITHUB_REPO")
-            
-            if not github_token:
-                print("❌ GITHUB_TOKEN no encontrado en secrets")
-                st.error("❌ Token de GitHub no configurado. Ve a Settings → Secrets")
-                return False
-                
-            if not github_repo:
-                print("❌ GITHUB_REPO no encontrado en secrets")
-                st.error("❌ GITHUB_REPO no configurado en Secrets")
-                return False
-                
-            print(f"✅ Secrets encontrados: repo={github_repo}")
-            
-        except Exception as e:
-            print(f"❌ Error al leer secrets: {e}")
-            st.error(f"Error al leer secrets: {e}")
-            return False
-        
-        # Leer entradas y salidas
-        entradas = cargar_entradas_db()
-        salidas = cargar_salidas_db()
-        
-        print(f"📊 Datos: {len(entradas)} entradas, {len(salidas)} salidas")
-        
-        # Guardar localmente primero
-        guardar_a_json(entradas, ENTRADAS_PERSIST)
-        guardar_a_json(salidas, SALIDAS_PERSIST)
-        
-        print("✅ JSON guardados localmente")
-        
-        # Leer contenido de JSON
-        with open(ENTRADAS_PERSIST, 'r', encoding='utf-8') as f:
-            entradas_json = f.read()
-        
-        with open(SALIDAS_PERSIST, 'r', encoding='utf-8') as f:
-            salidas_json = f.read()
-        
-        print(f"📄 JSON leídos: {len(entradas_json)} bytes (entradas), {len(salidas_json)} bytes (salidas)")
-        
-        # Commit a GitHub
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        print("🚀 Iniciando commits a GitHub...")
-        
-        resultado1 = commit_file_to_github(
-            "backups_sistema/entradas_persist.json",
-            entradas_json,
-            f"Auto-sync entradas - {timestamp}"
-        )
-        
-        resultado2 = commit_file_to_github(
-            "backups_sistema/salidas_persist.json",
-            salidas_json,
-            f"Auto-sync salidas - {timestamp}"
-        )
-        
-        if resultado1 and resultado2:
-            print("✅ Commits exitosos")
-            # Crear y subir backup Excel
-            auto_backup_excel_github()
-            return True
-        else:
-            print("⚠️ Algunos commits fallaron")
-            return False
-        
-    except Exception as e:
-        print(f"❌ ERROR CRÍTICO en sincronizar_github: {e}")
-        import traceback
-        traceback.print_exc()
-        st.error(f"Error crítico: {e}")
-        return False
-
-def auto_backup_excel_github():
-    """Crea backup Excel y lo sube a GitHub"""
-    try:
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"backup_auto_{timestamp}.xlsx"
-        local_path = DATA_DIR / filename
-        
-        entradas = cargar_entradas_db()
-        salidas = cargar_salidas_db()
-        
-        # Crear Excel localmente
-        with pd.ExcelWriter(local_path, engine='openpyxl') as writer:
-            entradas.to_excel(writer, sheet_name='Entradas', index=False)
-            salidas.to_excel(writer, sheet_name='Salidas', index=False)
-        
-        # Leer archivo Excel como bytes
-        with open(local_path, 'rb') as f:
-            excel_bytes = f.read()
-        
-        # Subir a GitHub
-        commit_file_to_github(
-            f"backups_sistema/{filename}",
-            excel_bytes,
-            f"Auto-backup Excel - {timestamp}"
-        )
-        
-        # Limpiar backups locales antiguos
-        backups = sorted(DATA_DIR.glob("backup_auto_*.xlsx"))
-        if len(backups) > 5:
-            for old_backup in backups[:-5]:
-                old_backup.unlink()
-        
-        return True
-        
-    except Exception as e:
-        print(f"Error en backup Excel: {e}")
-        return False
