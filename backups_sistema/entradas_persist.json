@@ -1,5 +1,23 @@
 [
   {
+    "id": 8,
+    "orden_compra": "OC_005",
+    "fecha": "2026-02-04",
+    "codigo": "AA04",
+    "producto": "Suministro Nitrogeno",
+    "cantidad": 20.0,
+    "um": "m3",
+    "sistema": "Suministros Aire Acondicionado",
+    "almacen_salida": "SSS",
+    "fecha_envio": "2026-02-04",
+    "responsable_envio": "DRE",
+    "almacen_recepcion": "MHJ",
+    "fecha_recepcion": "2026-02-04",
+    "responsable_recepcion": "ASD",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 10:36 PM"
+  },
+  {
     "id": 7,
     "orden_compra": "OT_002",
     "fecha": "2026-02-04",
