@@ -1,5 +1,23 @@
 [
   {
+    "id": 2,
+    "nro_guia": "TEST05",
+    "nro_tarea": "CM05",
+    "fecha": "2026-02-04",
+    "cod_sitio": "0134009",
+    "sitio": "0134009_AQ_Progreso_48",
+    "departamento": "AREQUIPA",
+    "codigo": "AA04",
+    "producto": "Suministro Nitrogeno",
+    "code_indra": "AAA",
+    "descripcion": "SSS",
+    "cantidad": 50.0,
+    "um": "m3",
+    "sistema": "Suministros Aire Acondicionado",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 09:29 PM"
+  },
+  {
     "id": 1,
     "nro_guia": "TEST_02",
     "nro_tarea": "CM01",
