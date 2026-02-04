@@ -1,5 +1,23 @@
 [
   {
+    "id": 11,
+    "orden_compra": "a",
+    "fecha": "2026-02-04",
+    "codigo": "AA22",
+    "producto": "Suministro de protector de fase",
+    "cantidad": 2.0,
+    "um": "und",
+    "sistema": "Suministros Aire Acondicionado",
+    "almacen_salida": "a",
+    "fecha_envio": "2026-02-04",
+    "responsable_envio": "a",
+    "almacen_recepcion": "a",
+    "fecha_recepcion": "2026-02-04",
+    "responsable_recepcion": "a",
+    "creado_por": "Usuario",
+    "fecha_creacion": "04/02/2026 06:04 AM"
+  },
+  {
     "id": 10,
     "orden_compra": "test008",
     "fecha": "2026-02-04",
