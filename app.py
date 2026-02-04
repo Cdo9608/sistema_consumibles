@@ -74,6 +74,83 @@ def init_database():
     conn.close()
 
 
+
+def restaurar_desde_json_local():
+    """Restaura datos desde JSON local al iniciar (si la BD está vacía)"""
+    try:
+        print("="*70)
+        print("🔄 VERIFICANDO NECESIDAD DE RESTAURACIÓN")
+        print("="*70)
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Verificar si la BD tiene datos
+        cursor.execute("SELECT COUNT(*) FROM entradas")
+        count_entradas_db = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM salidas")
+        count_salidas_db = cursor.fetchone()[0]
+        
+        print(f"📊 Registros en BD: {count_entradas_db} entradas, {count_salidas_db} salidas")
+        
+        # Verificar si existen archivos JSON
+        tiene_json_entradas = ENTRADAS_PERSIST.exists()
+        tiene_json_salidas = SALIDAS_PERSIST.exists()
+        
+        print(f"📁 Archivos JSON: entradas={tiene_json_entradas}, salidas={tiene_json_salidas}")
+        
+        restaurado = False
+        
+        # Restaurar ENTRADAS si la BD está vacía pero hay JSON
+        if count_entradas_db == 0 and tiene_json_entradas:
+            try:
+                with open(ENTRADAS_PERSIST, 'r', encoding='utf-8') as f:
+                    entradas_data = json.load(f)
+                
+                if entradas_data:
+                    print(f"🔄 Restaurando {len(entradas_data)} entradas desde JSON...")
+                    df = pd.DataFrame(entradas_data)
+                    df.to_sql('entradas', conn, if_exists='replace', index=False)
+                    print(f"✅ ENTRADAS RESTAURADAS: {len(entradas_data)} registros")
+                    restaurado = True
+            except Exception as e:
+                print(f"❌ Error restaurando entradas: {e}")
+        
+        # Restaurar SALIDAS si la BD está vacía pero hay JSON
+        if count_salidas_db == 0 and tiene_json_salidas:
+            try:
+                with open(SALIDAS_PERSIST, 'r', encoding='utf-8') as f:
+                    salidas_data = json.load(f)
+                
+                if salidas_data:
+                    print(f"🔄 Restaurando {len(salidas_data)} salidas desde JSON...")
+                    df = pd.DataFrame(salidas_data)
+                    df.to_sql('salidas', conn, if_exists='replace', index=False)
+                    print(f"✅ SALIDAS RESTAURADAS: {len(salidas_data)} registros")
+                    restaurado = True
+            except Exception as e:
+                print(f"❌ Error restaurando salidas: {e}")
+        
+        conn.close()
+        
+        if restaurado:
+            print("="*70)
+            print("✅ RESTAURACIÓN COMPLETADA")
+            print("="*70)
+        else:
+            print("ℹ️ No se requiere restauración (BD ya tiene datos o no hay JSON)")
+            print("="*70)
+        
+        return restaurado
+        
+    except Exception as e:
+        print(f"❌ ERROR CRÍTICO EN RESTAURACIÓN: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 # ==================== FUNCIONES DE PERSISTENCIA Y GITHUB API ====================
 
 def guardar_a_json(df, archivo):
@@ -1118,4 +1195,11 @@ def main():
                             st.rerun()
 
 if __name__ == "__main__":
+    # Inicializar BD
+    init_database()
+    
+    # RESTAURAR DATOS desde JSON si la BD está vacía
+    restaurar_desde_json_local()
+    
+    # Ejecutar aplicación
     main()
