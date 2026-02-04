@@ -1,5 +1,23 @@
 [
   {
+    "id": 10,
+    "orden_compra": "test008",
+    "fecha": "2026-02-04",
+    "codigo": "AA30",
+    "producto": "Suministro de motor ventilador UC 1/4HP",
+    "cantidad": 2.0,
+    "um": "und",
+    "sistema": "Suministros Aire Acondicionado",
+    "almacen_salida": "m",
+    "fecha_envio": "2026-02-04",
+    "responsable_envio": "m",
+    "almacen_recepcion": "m",
+    "fecha_recepcion": "2026-02-04",
+    "responsable_recepcion": "m",
+    "creado_por": "Usuario",
+    "fecha_creacion": "04/02/2026 06:03 AM"
+  },
+  {
     "id": 8,
     "orden_compra": "OC_005",
     "fecha": "2026-02-04",
