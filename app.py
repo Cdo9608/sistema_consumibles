@@ -163,7 +163,7 @@ def init_database():
     
     conn.commit()
     
-    # RESTAURACIÓN AUTOMÁTICA desde JSON
+   
     try:
         cursor.execute("SELECT COUNT(*) FROM entradas")
         count_entradas = cursor.fetchone()[0]
@@ -400,7 +400,7 @@ def exportar_excel_completo():
         st.error(f"Error al exportar: {e}")
         return None
 
-# ==================== FUNCIONES ORIGINALES ====================
+
 
 def obtener_hora_peru():
     """Obtiene la hora actual de Perú (UTC-5)"""
