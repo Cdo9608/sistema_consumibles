@@ -1,5 +1,23 @@
 [
   {
+    "id": 4,
+    "nro_guia": "TEST08",
+    "nro_tarea": "CM_003",
+    "fecha": "2026-02-03",
+    "cod_sitio": "0132373",
+    "sitio": "0132373_AQ_Alto_Inclan",
+    "departamento": "AREQUIPA",
+    "codigo": "AA06",
+    "producto": "Suministro de Oxigeno",
+    "code_indra": "AS",
+    "descripcion": "ABC",
+    "cantidad": 50.0,
+    "um": "m3",
+    "sistema": "Suministros Aire Acondicionado",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 10:35 PM"
+  },
+  {
     "id": 3,
     "nro_guia": "TEST07",
     "nro_tarea": "CM01",
