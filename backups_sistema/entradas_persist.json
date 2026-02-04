@@ -1,23 +1,5 @@
 [
   {
-    "id": 9,
-    "orden_compra": "TEST_09",
-    "fecha": "2026-02-04",
-    "codigo": "AA04",
-    "producto": "Suministro Nitrogeno",
-    "cantidad": 3.0,
-    "um": "m3",
-    "sistema": "Suministros Aire Acondicionado",
-    "almacen_salida": "CHORRILLOS",
-    "fecha_envio": "2026-02-04",
-    "responsable_envio": "JUAN",
-    "almacen_recepcion": "ICA",
-    "fecha_recepcion": "2026-02-04",
-    "responsable_recepcion": "AAA",
-    "creado_por": "Usuario",
-    "fecha_creacion": "03/02/2026 10:38 PM"
-  },
-  {
     "id": 8,
     "orden_compra": "OC_005",
     "fecha": "2026-02-04",
