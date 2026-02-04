@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": 1,
+    "nro_guia": "TEST_02",
+    "nro_tarea": "CM01",
+    "fecha": "2026-02-04",
+    "cod_sitio": "0132373",
+    "sitio": "0132373_AQ_Alto_Inclan",
+    "departamento": "AREQUIPA",
+    "codigo": "AA05",
+    "producto": "Suministro Acetileno",
+    "code_indra": "",
+    "descripcion": "A",
+    "cantidad": 3.0,
+    "um": "kg",
+    "sistema": "Suministros Aire Acondicionado",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 09:28 PM"
+  }
+]
