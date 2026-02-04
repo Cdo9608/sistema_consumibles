@@ -903,7 +903,7 @@ def main():
                 responsable_recepcion = st.text_input("Responsable de Recepción", key=f"entrada_responsable_recepcion_{form_key}")
             
             if st.button("✅ Registrar Entrada", type="primary"):
-                if not all([orden_compra, codigo_seleccionado, cantidad]):
+                if not all([orden_compra, producto_seleccionado, cantidad]):
                     st.error("❌ Por favor completa todos los campos obligatorios (*)")
                 else:
                     datos = {
@@ -1046,7 +1046,7 @@ def main():
                     st.markdown('<div style="background-color: #f0f2f6; padding: 10px; border-radius: 5px; border: 1px solid #ddd; color: #999;">Selecciona un código primero</div>', unsafe_allow_html=True)
             
             if st.button("✅ Registrar Salida", type="primary"):
-                if not all([nro_guia, sitio_seleccionado, codigo_prod_seleccionado, cantidad_salida]):
+                if not all([nro_guia, sitio_seleccionado, producto_salida_seleccionado, cantidad_salida]):
                     st.error("❌ Por favor completa todos los campos obligatorios (*)")
                 else:
                     datos = {
@@ -1056,8 +1056,8 @@ def main():
                         'cod_sitio': cod_sitio_auto,
                         'sitio': sitio_seleccionado,
                         'departamento': departamento_auto,
-                        'codigo': codigo_prod_seleccionado,
-                        'producto': producto_salida_auto,
+                        'codigo': codigo_salida_auto,
+                        'producto': producto_salida_seleccionado,
                         'code_indra': code_indra,
                         'descripcion': descripcion,
                         'cantidad': cantidad_salida,
