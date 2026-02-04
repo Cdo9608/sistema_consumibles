@@ -1,5 +1,23 @@
 [
   {
+    "id": 6,
+    "orden_compra": "TEST_03",
+    "fecha": "2026-02-04",
+    "codigo": "AA06",
+    "producto": "Suministro de Oxigeno",
+    "cantidad": 1.0,
+    "um": "m3",
+    "sistema": "Suministros Aire Acondicionado",
+    "almacen_salida": "A",
+    "fecha_envio": "2026-02-04",
+    "responsable_envio": "A",
+    "almacen_recepcion": "",
+    "fecha_recepcion": "2026-02-04",
+    "responsable_recepcion": "A",
+    "creado_por": "Usuario",
+    "fecha_creacion": "03/02/2026 09:27 PM"
+  },
+  {
     "id": 5,
     "orden_compra": "TEST_02",
     "fecha": "2026-02-04",
